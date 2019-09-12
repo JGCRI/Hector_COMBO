@@ -77,7 +77,7 @@ longs = [-178.75:2.5:178.75]; % These indices are equivalent to columns
 % landcells = find(checkland);
 
 % Look through directory to find all SCENGEN output files
-outfiles = strcat(path4,'\*.OUT');
+outfiles = strcat(path4,'\*0.csv');
 files = dir(outfiles);
 %files = dir('C:\projects\COMBO\Matlab\Scengen_output\*.OUT');
 numfiles = size(files,1);
