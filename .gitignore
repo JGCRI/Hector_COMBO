@@ -1,2 +1,7 @@
 # Figures
 /2012.07.09.COMBO/2012.07.09.COMBO_PlosOne/*.pdf
+*.pdf
+*.txt
+*.rds
+*.lnk
+*.nc
