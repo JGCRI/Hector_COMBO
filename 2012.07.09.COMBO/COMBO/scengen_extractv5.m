@@ -77,13 +77,13 @@ longs = [-178.75:2.5:178.75]; % These indices are equivalent to columns
 % landcells = find(checkland);
 
 % Look through directory to find all SCENGEN output files
-outfiles = strcat(path4,'\*.OUT');
+outfiles = strcat(path4,'\*.csv');
 files = dir(outfiles);
 %files = dir('C:\projects\COMBO\Matlab\Scengen_output\*.OUT');
 numfiles = size(files,1);
 
 % Loop to open each file and extract data from the cells of interest
-for ii = 1:numfiles
+for ii = 1:1
     fname = files(ii).name;
     
     % Text read for bringing in SCENGEN output
@@ -97,33 +97,34 @@ for ii = 1:numfiles
     % Initialize loop variables
     no_lines = 0;
     max_line = 0;
-    ncols = 0;
+    ncols = 146;
     
     % Initialize the data to [].
     data = [];
     
-    % Read through header information. This can be discarded.
-    line = fgetl(fid);
-    if ~isstr(line)
-        disp('Warning: file contains no header and no data')
-    end;
-    [data, ncols, ~, nxtindex] = sscanf(line, '%f');
+%     % Read through header information. This can be discarded.
+%     line = fgetl(fid);
+%     if ~isstr(line)
+%         disp('Warning: file contains no header and no data')
+%     end;
+%     [data, ncols, ~, nxtindex] = sscanf(line, '%f');
+%     
+%     while isempty(data)|(nxtindex==1)
+%         no_lines = no_lines+1;
+%         max_line = max([max_line, length(line)]);
+%         % Create unique variable to hold this line of text information.
+%         % Store the last-read line in this variable.
+%         eval(['line', num2str(no_lines), '=line;']);
+%         line = fgetl(fid);
+%         if ~isstr(line)
+%             disp('Warning: file contains no data')
+%             break
+%         end;
+%         [data, ncols, ~, nxtindex] = sscanf(line, '%f');
+%     end % while
     
-    while isempty(data)|(nxtindex==1)
-        no_lines = no_lines+1;
-        max_line = max([max_line, length(line)]);
-        % Create unique variable to hold this line of text information.
-        % Store the last-read line in this variable.
-        eval(['line', num2str(no_lines), '=line;']);
-        line = fgetl(fid);
-        if ~isstr(line)
-            disp('Warning: file contains no data')
-            break
-        end;
-        [data, ncols, ~, nxtindex] = sscanf(line, '%f');
-    end % while
-    
-    data = [data; fscanf(fid, '%f')];
+    %data = [data; fscanf(fid, '%d %f')];
+    data = csvread('GHANDAER.2000.13.csv');
     fclose(fid);
     
     % Reshape output into proper number of rows and columns. Final matrix
