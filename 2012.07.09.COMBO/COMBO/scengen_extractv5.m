@@ -90,8 +90,8 @@ for ii = 1:1
     % Modifications needed 3/25/11 to account for longer filenames
     fid = fopen(files(ii).name);
     fname = files(ii).name;
-    year = str2num(fname(10:13));
-    yeartxt = fname(10:13);
+    year = str2num(fname(1:4));
+    yeartxt = fname(1:4);
     model = path4txt;
     
     % Initialize loop variables
