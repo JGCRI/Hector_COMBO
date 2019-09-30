@@ -83,7 +83,7 @@ files = dir(outfiles);
 numfiles = size(files,1);
 
 % Loop to open each file and extract data from the cells of interest
-for ii = 1:1
+for ii = 1:numfiles
     fname = files(ii).name;
     
     % Text read for bringing in SCENGEN output
@@ -123,8 +123,7 @@ for ii = 1:1
 %         [data, ncols, ~, nxtindex] = sscanf(line, '%f');
 %     end % while
     
-    %data = [data; fscanf(fid, '%d %f')];
-    data = csvread('GHANDAER.2000.13.csv');
+    data = csvread(files);
     fclose(fid);
     
     % Reshape output into proper number of rows and columns. Final matrix
