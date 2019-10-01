@@ -450,7 +450,7 @@ else
             POLValMin POLValMean POLValMax; lostbenefit_min lostbenefit lostbenefit_max]
         save(valdata_fname,'out_value_data','-ascii');
         
-        figure(7)
+        figure(12)
         plot(DateVec,base_cov(:,2),'b','LineWidth',2);
         hold on
         plot(DateVec,cover_avg,'r-.','LineWidth',2);
@@ -465,7 +465,7 @@ else
         cover_plotname = strcat(placename,'_cover.pdf');
         eval (['print -dpdfwrite ',cover_plotname])
         
-        figure(9)
+        figure(13)
         clf
         plot(DateVec,cover_avg_Tonly,'r','LineWidth',2)
         hold on
@@ -480,7 +480,7 @@ else
         TvsCo2_plotname = strcat(placename,'_cover_TvsCO2.pdf');
         eval (['print -dpdfwrite ',TvsCo2_plotname])
         
-        figure(10)
+        figure(14)
         clf
         plot(DateVec_yr,polval_disc,'b','LineWidth',2)
         hold on
@@ -500,7 +500,7 @@ else
         discval_plotname = strcat(placename,'_discvaluation.pdf');
         eval (['print -dpdfwrite ',discval_plotname])
         
-        figure(11)
+        figure(15)
         clf
         % Plot POL results with error bounds
         plot(DateVec_yr,polval_ndisc,'b','LineWidth',2)
