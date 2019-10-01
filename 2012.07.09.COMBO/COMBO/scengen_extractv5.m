@@ -188,17 +188,17 @@ cd(path1)
 
 
 %************************************************************************
-
-figure(1)
-clf
-imagesc(data_clip + -9999.*landmask)
-caxis([min(min(data_clip)) max(max(data_clip))]);
-hold on
-plot(col,row,'rs','LineWidth',2) % Plot location of interest on map
-xlabel('Longitude (deg)')
-ylabel('Latitude (deg)')
-title(['Scenario ',model,', Year ',yeartxt,', DeltaT'])
-colorbar('location','southoutside')
+% 
+% figure(1)
+% clf
+% imagesc(data_clip + -999.*landmask)
+% caxis([min(min(data_clip)) max(max(data_clip))]);
+% hold on
+% plot(col,row,'rs','LineWidth',2) % Plot location of interest on map
+% xlabel('Longitude (deg)')
+% ylabel('Latitude (deg)')
+% title(['Scenario ',model,', Year ',yeartxt,', DeltaT'])
+% colorbar('location','southoutside')
 
 
 end
