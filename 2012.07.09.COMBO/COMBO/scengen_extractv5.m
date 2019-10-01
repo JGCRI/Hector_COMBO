@@ -146,7 +146,18 @@ for ii = 1:(numfiles - 1)
     
     % Calculate average temperature change in 3x3 box around cell of
     % interest. Land cells are no longer masked out:
-    avg = mean(mean(data_clip(row-1:row+1,col-1:col+1)));
+        % get the 3x3 box data - ie a 3x3 matrix
+        box33 = data_clip(row-1:row+1,col-1:col+1);
+        % box33(box33 ~= -999) returns the values of this matrix
+        % that are not equal to -999 (our code for an NA value in SST =
+        % a land grid cell), as a vector.  The reshaping is fine because
+        % we only care about the average of all nonNA (non -999) values,
+        % not any structure.
+        % ideally would have done this in a few lines of codes with 
+        % step by step comments for clarity, but matlab won't complete
+        % an assignment of the vector box33(box33 ~= -999) - in other
+        % words `A = box33(box33 ~= -999);` won't execute.
+    avg = mean(box33(box33 ~= -999));
     
     % LAND MASKING DISABLED AS OF 7/12/11
     %    if isempty(landcells)
