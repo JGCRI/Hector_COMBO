@@ -70,6 +70,7 @@ longs = [-178.75:2.5:178.75]; % These indices are equivalent to columns
 [~,row] = min(abs(lats-lat)); % Returns the row of interest
 [~,col] = min(abs(longs-long)); % Returns column of interest
 
+
 % Land Masking parameters: DISABLED AS OF 7/12/11
 % % Find indices of all cells in 3x3 box around cell of interest that
 % % contain only ocean (i.e., landmask ==0)
@@ -83,7 +84,7 @@ files = dir(outfiles);
 numfiles = size(files,1);
 
 % Loop to open each file and extract data from the cells of interest
-for ii = 1:1
+for ii = 1:(numfiles - 1)
     fname = files(ii).name;
     
     % Text read for bringing in SCENGEN output
@@ -92,12 +93,19 @@ for ii = 1:1
     fname = files(ii).name;
     year = str2num(fname(1:4));
     yeartxt = fname(1:4);
-    model = path4txt;
+    % model = path4txt; 
+    
+    % give more informative model name than just the name
+    % of the directory. New file names follow convention
+    % YEAR_modelname.csv. Who knows if that will cause downstream
+    % issues with the way this code goes - ACS
+    model = fname(6:10);
+    
     
     % Initialize loop variables
     no_lines = 0;
     max_line = 0;
-    ncols = 146;
+    ncols = 0;
     
     % Initialize the data to [].
     data = [];
@@ -124,7 +132,9 @@ for ii = 1:1
 %     end % while
     
     %data = [data; fscanf(fid, '%d %f')];
-    data = csvread('GHANDAER.2000.13.csv');
+    data = csvread(fname);
+    sz = size(data);
+    ncols = sz(2);
     fclose(fid);
     
     % Reshape output into proper number of rows and columns. Final matrix
