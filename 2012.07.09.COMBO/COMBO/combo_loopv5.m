@@ -349,8 +349,8 @@ end
 % Plot results for valuation comparisons
 if path4txt == 'POL3'
     % filenames for output
-    val_fname = strcat(placename,'_',path4txt,'_val.txt');
-    cov_fname = strcat(placename,'_',path4txt,'_cov.txt');
+    val_fname = strcat(path1, '\output\', placename,'_',path4txt,'_val.txt');
+    cov_fname = strcat(path1, '\output\', placename,'_',path4txt,'_cov.txt');
 
     DateVec_yr = [2000:2100];
     
@@ -407,8 +407,8 @@ if path4txt == 'POL3'
 else
     try
         % NEED TO RE-WRITE FOR NEW VARIABLE NAMES
-        val_basename = strcat(placename,'_POL3_val.txt');
-        cov_basename = strcat(placename,'_POL3_cov.txt');
+        val_basename = strcat(path1, '\output\', placename,'_POL3_val.txt');
+        cov_basename = strcat(path1, '\output\', placename,'_POL3_cov.txt');
         base_val = dlmread(val_basename);
         base_cov = dlmread(cov_basename);
         DateVec_yr = [2000:2100];
@@ -441,9 +441,9 @@ else
         %         lostbenefit_max = sum(polval_disc_max-disc_vals(:,3));
         
         % filenames for output
-        val_fname = strcat(placename,'_',path4txt,'_val.txt');
-        cov_fname = strcat(placename,'_',path4txt,'_cov.txt');
-        valdata_fname = strcat(placename,'_',valtype,'_','val_out.txt');
+        val_fname = strcat(path1, '\output\', placename,'_',path4txt,'_val.txt');
+        cov_fname = strcat(path1, '\output\', placename,'_',path4txt,'_cov.txt');
+        valdata_fname = strcat(path1, '\output\', placename,'_',valtype,'_','val_out.txt');
         
         % Output a file with data summarizing values for each scenario
         out_value_data = [BAUValMin BAUValMean BAUValMax; ...
@@ -462,7 +462,7 @@ else
         grid on
         axis([2000 2100 0 100])
         axis 'auto y'
-        cover_plotname = strcat(placename,'_cover.pdf');
+        cover_plotname = strcat(path1, '\output\', placename,'_cover.pdf');
         eval (['print -dpdfwrite ',cover_plotname])
         
         figure(13)
@@ -477,7 +477,7 @@ else
         grid on
         axis([2000 2100 0 100])
         axis 'auto y'
-        TvsCo2_plotname = strcat(placename,'_cover_TvsCO2.pdf');
+        TvsCo2_plotname = strcat(path1, '\output\', placename,'_cover_TvsCO2.pdf');
         eval (['print -dpdfwrite ',TvsCo2_plotname])
         
         figure(14)
@@ -497,7 +497,7 @@ else
         ylabel('Discounted Value (M 2007$)')
         title({['Reduced emissions vs BAU valuation comparison for ',placename],...
             ['Sum of Lost Annual Benefits = $',num2str(round(lostbenefit)),'M']})
-        discval_plotname = strcat(placename,'_discvaluation.pdf');
+        discval_plotname = strcat(path1, '\output\', placename,'_discvaluation.pdf');
         eval (['print -dpdfwrite ',discval_plotname])
         
         figure(15)
@@ -517,7 +517,7 @@ else
         xlabel('Year')
         ylabel('Nominal Value (M 2007$)')
         title(['Reduced emissions vs BAU valuation comparison for ',placename]);
-        ndiscval_plotname = strcat(placename,'_ndiscvaluation.pdf');
+        ndiscval_plotname = strcat(path1, '\output\', placename,'_ndiscvaluation.pdf');
         eval (['print -dpdfwrite ',ndiscval_plotname])
 
 
