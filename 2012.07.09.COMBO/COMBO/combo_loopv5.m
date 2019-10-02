@@ -68,7 +68,7 @@ disp('NOTE: for valuation, you must run policy scenario first as baseline')
 disp('After policy scenario is run, re-run with no policy for valuation')
 disp('')
 blyesno = input('Save policy output as baseline for value comparison? (y/n) ','s');
-path4txt = input('Enter Scenario to run (RCP45, BAU6, or POL3): ','s');
+path4txt = input('Enter Scenario to run (RCP26, RCP45, BAU6, or POL3): ','s');
 
 % User inputs for recreational use and nonuse values:
 % PUT THESE INTO USER INPUTS SPREADSHEETS
@@ -347,7 +347,7 @@ end
 %
 % Save matrices discvalues_all
 % Plot results for valuation comparisons
-if path4txt == 'POL3'
+if path4txt == 'RCP26'
     % filenames for output
     val_fname = strcat(placename,'_',path4txt,'_val.txt');
     cov_fname = strcat(placename,'_',path4txt,'_cov.txt');
@@ -407,8 +407,8 @@ if path4txt == 'POL3'
 else
     try
         % NEED TO RE-WRITE FOR NEW VARIABLE NAMES
-        val_basename = strcat(placename,'_POL3_val.txt');
-        cov_basename = strcat(placename,'_POL3_cov.txt');
+        val_basename = strcat(placename,'_RCP26_val.txt');
+        cov_basename = strcat(placename,'_RCP26_cov.txt');
         base_val = dlmread(val_basename);
         base_cov = dlmread(cov_basename);
         DateVec_yr = [2000:2100];
