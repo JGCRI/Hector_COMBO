@@ -1,33 +1,7 @@
 # Figures
-C:/Users/hart428/Documents/GitHub/COMBO_Hector/2012.07.09.COMBO/COMBO/*.pdf
-2012.07.09.COMBO/COMBO/FL_R1R2_POL3_cov_fl1.pdf
+/2012.07.09.COMBO/2012.07.09.COMBO_PlosOne/*.pdf
 *.pdf
-2012.07.09.COMBO/COMBO/PctInitCov_pr5_pol3.txt
-2012.07.09.COMBO/COMBO/PctInitCov_pr3_pol3.txt
-task_list.docx
-2012.07.09.COMBO/COMBO/Scengen_EPA/PATTERN_tas_ANN_CanESM2_rcp85.nc
-2012.07.09.COMBO/COMBO/Scengen_EPA/RCP45/regrid.nc
-2012.07.09.COMBO/COMBO/Scengen_EPA/tos_Omon_IPSL-CM5A-LR_rcp45_r4i1p1_200601-210012.nc
-2012.07.09.COMBO/COMBO/Scengen_EPA/test_scengen_mimic.R
-*.pdf
-2012.07.09.COMBO/COMBO/Scengen_EPA/RCP45/gridtype.txt
+*.txt
 *.rds
-2012.07.09.COMBO/COMBO/pr8_bleachdates__pol3.txt
-2012.07.09.COMBO/COMBO/pr6_bleachdates__pol3.txt
-2012.07.09.COMBO/COMBO/pr1_bleachdates__pol3.txt
-2012.07.09.COMBO/COMBO/PctInitCov_pr8_pol3.txt
-2012.07.09.COMBO/COMBO/FL_R1R2_POL3_cov_fl1.pdf
-2012.07.09.COMBO/COMBO/FL_R1R2_POL3_cov_fl2.pdf
-2012.07.09.COMBO/COMBO/FL_R1R2_POL3_cov_fl9.pdf
-2012.07.09.COMBO/COMBO/PctInitCov_pr1_pol3.txt
-2012.07.09.COMBO/COMBO/Scengen_EPA/CDO-handout.docx - Shortcut.lnk
-2012.07.09.COMBO/COMBO/pr2_bleachdates__pol3.txt
-2012.07.09.COMBO/COMBO/PctInitCov_pr2_pol3.txt
-2012.07.09.COMBO/COMBO/PctInitCov_pr6_pol3.txt
-2012.07.09.COMBO/COMBO/FL_R1R2_POL3_cov_fl9.pdf
-2012.07.09.COMBO/COMBO/PctInitCov_pr7_pol3.txt
-2012.07.09.COMBO/COMBO/pr3_bleachdates__pol3.txt
-2012.07.09.COMBO/COMBO/PctInitCov_pr4_pol3.txt
-2012.07.09.COMBO/COMBO/pr4_bleachdates__pol3.txt
-2012.07.09.COMBO/COMBO/pr5_bleachdates__pol3.txt
-2012.07.09.COMBO/COMBO/pr7_bleachdates__pol3.txt
+*.lnk
+*.nc
