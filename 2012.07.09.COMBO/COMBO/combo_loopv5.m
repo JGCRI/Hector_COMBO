@@ -68,7 +68,7 @@ disp('NOTE: for valuation, you must run policy scenario first as baseline')
 disp('After policy scenario is run, re-run with no policy for valuation')
 disp('')
 blyesno = input('Save policy output as baseline for value comparison? (y/n) ','s');
-path4txt = input('Enter Scenario to run (RCP26, RCP45, BAU6, or POL3): ','s');
+path4txt = input('Enter Scenario to run (NoParis, Paris, ParisPlus, ParisRef): ','s');
 
 % User inputs for recreational use and nonuse values:
 % PUT THESE INTO USER INPUTS SPREADSHEETS

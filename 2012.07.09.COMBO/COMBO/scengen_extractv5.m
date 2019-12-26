@@ -4,7 +4,7 @@
 % surrounding a particular cell of interest (user-defined).
 
 % FILE NAMING CONVENTION REQUIREMENTS:
-% All files should be put into a folder clearly labeled with the model
+% All files should be put into a folder clearly labeled with the mode
 % parameters used to generate the output. A README.txt file should be
 % included in this folder with details on the models used.
 % Filenames should be formatted as follows: YYYYAAA.OUT
