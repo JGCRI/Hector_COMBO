@@ -4,7 +4,7 @@
 % surrounding a particular cell of interest (user-defined).
 
 % FILE NAMING CONVENTION REQUIREMENTS:
-% All files should be put into a folder clearly labeled with the model
+% All files should be put into a folder clearly labeled with the mode
 % parameters used to generate the output. A README.txt file should be
 % included in this folder with details on the models used.
 % Filenames should be formatted as follows: YYYYAAA.OUT
@@ -70,6 +70,7 @@ longs = [-178.75:2.5:178.75]; % These indices are equivalent to columns
 [~,row] = min(abs(lats-lat)); % Returns the row of interest
 [~,col] = min(abs(longs-long)); % Returns column of interest
 
+
 % Land Masking parameters: DISABLED AS OF 7/12/11
 % % Find indices of all cells in 3x3 box around cell of interest that
 % % contain only ocean (i.e., landmask ==0)
@@ -77,22 +78,29 @@ longs = [-178.75:2.5:178.75]; % These indices are equivalent to columns
 % landcells = find(checkland);
 
 % Look through directory to find all SCENGEN output files
-outfiles = strcat(path4,'\*.OUT');
+outfiles = strcat(path4,'\*.csv');
 files = dir(outfiles);
 %files = dir('C:\projects\COMBO\Matlab\Scengen_output\*.OUT');
 numfiles = size(files,1);
 
 % Loop to open each file and extract data from the cells of interest
-for ii = 1:numfiles
+for ii = 1:(numfiles - 1)
     fname = files(ii).name;
     
     % Text read for bringing in SCENGEN output
     % Modifications needed 3/25/11 to account for longer filenames
     fid = fopen(files(ii).name);
     fname = files(ii).name;
-    year = str2num(fname(10:13));
-    yeartxt = fname(10:13);
-    model = path4txt;
+    year = str2num(fname(1:4));
+    yeartxt = fname(1:4);
+    % model = path4txt; 
+    
+    % give more informative model name than just the name
+    % of the directory. New file names follow convention
+    % YEAR_modelname.csv. Who knows if that will cause downstream
+    % issues with the way this code goes - ACS
+    model = fname(6:10);
+    
     
     % Initialize loop variables
     no_lines = 0;
@@ -102,28 +110,31 @@ for ii = 1:numfiles
     % Initialize the data to [].
     data = [];
     
-    % Read through header information. This can be discarded.
-    line = fgetl(fid);
-    if ~isstr(line)
-        disp('Warning: file contains no header and no data')
-    end;
-    [data, ncols, ~, nxtindex] = sscanf(line, '%f');
+%     % Read through header information. This can be discarded.
+%     line = fgetl(fid);
+%     if ~isstr(line)
+%         disp('Warning: file contains no header and no data')
+%     end;
+%     [data, ncols, ~, nxtindex] = sscanf(line, '%f');
+%     
+%     while isempty(data)|(nxtindex==1)
+%         no_lines = no_lines+1;
+%         max_line = max([max_line, length(line)]);
+%         % Create unique variable to hold this line of text information.
+%         % Store the last-read line in this variable.
+%         eval(['line', num2str(no_lines), '=line;']);
+%         line = fgetl(fid);
+%         if ~isstr(line)
+%             disp('Warning: file contains no data')
+%             break
+%         end;
+%         [data, ncols, ~, nxtindex] = sscanf(line, '%f');
+%     end % while
     
-    while isempty(data)|(nxtindex==1)
-        no_lines = no_lines+1;
-        max_line = max([max_line, length(line)]);
-        % Create unique variable to hold this line of text information.
-        % Store the last-read line in this variable.
-        eval(['line', num2str(no_lines), '=line;']);
-        line = fgetl(fid);
-        if ~isstr(line)
-            disp('Warning: file contains no data')
-            break
-        end;
-        [data, ncols, ~, nxtindex] = sscanf(line, '%f');
-    end % while
-    
-    data = [data; fscanf(fid, '%f')];
+    %data = [data; fscanf(fid, '%d %f')];
+    data = csvread(fname);
+    sz = size(data);
+    ncols = sz(2);
     fclose(fid);
     
     % Reshape output into proper number of rows and columns. Final matrix
@@ -135,7 +146,18 @@ for ii = 1:numfiles
     
     % Calculate average temperature change in 3x3 box around cell of
     % interest. Land cells are no longer masked out:
-    avg = mean(mean(data_clip(row-1:row+1,col-1:col+1)));
+        % get the 3x3 box data - ie a 3x3 matrix
+        box33 = data_clip(row-1:row+1,col-1:col+1);
+        % box33(box33 ~= -999) returns the values of this matrix
+        % that are not equal to -999 (our code for an NA value in SST =
+        % a land grid cell), as a vector.  The reshaping is fine because
+        % we only care about the average of all nonNA (non -999) values,
+        % not any structure.
+        % ideally would have done this in a few lines of codes with 
+        % step by step comments for clarity, but matlab won't complete
+        % an assignment of the vector box33(box33 ~= -999) - in other
+        % words `A = box33(box33 ~= -999);` won't execute.
+    avg = mean(box33(box33 ~= -999));
     
     % LAND MASKING DISABLED AS OF 7/12/11
     %    if isempty(landcells)
@@ -166,17 +188,17 @@ cd(path1)
 
 
 %************************************************************************
-
-figure(1)
-clf
-imagesc(data_clip + -9999.*landmask)
-caxis([min(min(data_clip)) max(max(data_clip))]);
-hold on
-plot(col,row,'rs','LineWidth',2) % Plot location of interest on map
-xlabel('Longitude (deg)')
-ylabel('Latitude (deg)')
-title(['Scenario ',model,', Year ',yeartxt,', DeltaT'])
-colorbar('location','southoutside')
+% 
+% figure(1)
+% clf
+% imagesc(data_clip + -999.*landmask)
+% caxis([min(min(data_clip)) max(max(data_clip))]);
+% hold on
+% plot(col,row,'rs','LineWidth',2) % Plot location of interest on map
+% xlabel('Longitude (deg)')
+% ylabel('Latitude (deg)')
+% title(['Scenario ',model,', Year ',yeartxt,', DeltaT'])
+% colorbar('location','southoutside')
 
 
 end

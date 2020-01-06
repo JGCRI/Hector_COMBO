@@ -68,7 +68,7 @@ disp('NOTE: for valuation, you must run policy scenario first as baseline')
 disp('After policy scenario is run, re-run with no policy for valuation')
 disp('')
 blyesno = input('Save policy output as baseline for value comparison? (y/n) ','s');
-path4txt = input('Enter Scenario to run (RCP45, BAU6, or POL3): ','s');
+path4txt = input('Enter Scenario to run (NoParis, Paris, ParisPlus, ParisRef): ','s');
 
 % User inputs for recreational use and nonuse values:
 % PUT THESE INTO USER INPUTS SPREADSHEETS
@@ -347,10 +347,10 @@ end
 %
 % Save matrices discvalues_all
 % Plot results for valuation comparisons
-if path4txt == 'POL3'
+if path4txt == 'RCP26'
     % filenames for output
-    val_fname = strcat(placename,'_',path4txt,'_val.txt');
-    cov_fname = strcat(placename,'_',path4txt,'_cov.txt');
+    val_fname = strcat(path1, '\output\', placename,'_',path4txt,'_val.txt');
+    cov_fname = strcat(path1, '\output\', placename,'_',path4txt,'_cov.txt');
 
     DateVec_yr = [2000:2100];
     
@@ -407,8 +407,9 @@ if path4txt == 'POL3'
 else
     try
         % NEED TO RE-WRITE FOR NEW VARIABLE NAMES
-        val_basename = strcat(placename,'_POL3_val.txt');
-        cov_basename = strcat(placename,'_POL3_cov.txt');
+        val_basename = strcat(path1, '\output\', placename,'_RCP26_val.txt');
+        cov_basename = strcat(path1, '\output\', placename,'_RCP26_cov.txt');
+
         base_val = dlmread(val_basename);
         base_cov = dlmread(cov_basename);
         DateVec_yr = [2000:2100];
@@ -441,16 +442,16 @@ else
         %         lostbenefit_max = sum(polval_disc_max-disc_vals(:,3));
         
         % filenames for output
-        val_fname = strcat(placename,'_',path4txt,'_val.txt');
-        cov_fname = strcat(placename,'_',path4txt,'_cov.txt');
-        valdata_fname = strcat(placename,'_',valtype,'_','val_out.txt');
+        val_fname = strcat(path1, '\output\', placename,'_',path4txt,'_val.txt');
+        cov_fname = strcat(path1, '\output\', placename,'_',path4txt,'_cov.txt');
+        valdata_fname = strcat(path1, '\output\', placename,'_',valtype,'_','val_out.txt');
         
         % Output a file with data summarizing values for each scenario
         out_value_data = [BAUValMin BAUValMean BAUValMax; ...
             POLValMin POLValMean POLValMax; lostbenefit_min lostbenefit lostbenefit_max]
         save(valdata_fname,'out_value_data','-ascii');
         
-        figure(7)
+        figure(12)
         plot(DateVec,base_cov(:,2),'b','LineWidth',2);
         hold on
         plot(DateVec,cover_avg,'r-.','LineWidth',2);
@@ -462,10 +463,10 @@ else
         grid on
         axis([2000 2100 0 100])
         axis 'auto y'
-        cover_plotname = strcat(placename,'_cover.pdf');
+        cover_plotname = strcat(path1, '\output\', placename,'_cover.pdf');
         eval (['print -dpdfwrite ',cover_plotname])
         
-        figure(9)
+        figure(13)
         clf
         plot(DateVec,cover_avg_Tonly,'r','LineWidth',2)
         hold on
@@ -477,10 +478,10 @@ else
         grid on
         axis([2000 2100 0 100])
         axis 'auto y'
-        TvsCo2_plotname = strcat(placename,'_cover_TvsCO2.pdf');
+        TvsCo2_plotname = strcat(path1, '\output\', placename,'_cover_TvsCO2.pdf');
         eval (['print -dpdfwrite ',TvsCo2_plotname])
         
-        figure(10)
+        figure(14)
         clf
         plot(DateVec_yr,polval_disc,'b','LineWidth',2)
         hold on
@@ -497,10 +498,10 @@ else
         ylabel('Discounted Value (M 2007$)')
         title({['Reduced emissions vs BAU valuation comparison for ',placename],...
             ['Sum of Lost Annual Benefits = $',num2str(round(lostbenefit)),'M']})
-        discval_plotname = strcat(placename,'_discvaluation.pdf');
+        discval_plotname = strcat(path1, '\output\', placename,'_discvaluation.pdf');
         eval (['print -dpdfwrite ',discval_plotname])
         
-        figure(11)
+        figure(15)
         clf
         % Plot POL results with error bounds
         plot(DateVec_yr,polval_ndisc,'b','LineWidth',2)
@@ -517,7 +518,7 @@ else
         xlabel('Year')
         ylabel('Nominal Value (M 2007$)')
         title(['Reduced emissions vs BAU valuation comparison for ',placename]);
-        ndiscval_plotname = strcat(placename,'_ndiscvaluation.pdf');
+        ndiscval_plotname = strcat(path1, '\output\', placename,'_ndiscvaluation.pdf');
         eval (['print -dpdfwrite ',ndiscval_plotname])
 
 
