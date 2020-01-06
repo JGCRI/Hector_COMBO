@@ -347,7 +347,7 @@ end
 %
 % Save matrices discvalues_all
 % Plot results for valuation comparisons
-if path4txt == 'RCP26'
+if path4txt == 'ParisPlus'
     % filenames for output
     val_fname = strcat(path1, '\output\', placename,'_',path4txt,'_val.txt');
     cov_fname = strcat(path1, '\output\', placename,'_',path4txt,'_cov.txt');
