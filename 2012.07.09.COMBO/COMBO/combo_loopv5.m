@@ -347,7 +347,7 @@ end
 %
 % Save matrices discvalues_all
 % Plot results for valuation comparisons
-if path4txt == 'ParisPlus'
+if strcmp(path4txt, 'ParisPlus')==1
     % filenames for output
     val_fname = strcat(path1, '\output\', placename,'_',path4txt,'_val.txt');
     cov_fname = strcat(path1, '\output\', placename,'_',path4txt,'_cov.txt');
@@ -407,8 +407,8 @@ if path4txt == 'ParisPlus'
 else
     try
         % NEED TO RE-WRITE FOR NEW VARIABLE NAMES
-        val_basename = strcat(path1, '\output\', placename,'_RCP26_val.txt');
-        cov_basename = strcat(path1, '\output\', placename,'_RCP26_cov.txt');
+        val_basename = strcat(path1, '\output\', placename,'_ParisPlus_val.txt');
+        cov_basename = strcat(path1, '\output\', placename,'_ParisPlus_cov.txt');
 
         base_val = dlmread(val_basename);
         base_cov = dlmread(cov_basename);
