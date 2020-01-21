@@ -16,6 +16,8 @@ files %>%
   arrange(model) %>%
   as.data.frame()
 
+
+
 files %>%
   filter(variable == 'tos')  %>% 
   select(model, experiment) %>%
