@@ -115,10 +115,10 @@ end
 valtype = input('What values should be used for valuation routine (Rec, Nonuse, or Total)? ','s');
 
 % Discounting parameters go here:
-base2007 = input('Use 2007 as base year (default)? ','s');
-if base2007 == 'y'
-    baseyr = 2007;                          % Base year for calcs
-elseif base2007 == 'n'
+base2015 = input('Use 2015 as base year (default)? ','s');
+if base2015 == 'y'
+    baseyr = 2015;                          % Base year for calcs
+elseif base2015 == 'n'
     baseyr = input('Enter base year for discounting: ');
 end
 disc05 = input('Use discount rate of 5% (default)? ','s');
