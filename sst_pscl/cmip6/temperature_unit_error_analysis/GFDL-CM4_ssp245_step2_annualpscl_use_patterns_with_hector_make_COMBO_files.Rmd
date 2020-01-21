@@ -1,0 +1,202 @@
+---
+title: "GFDL-CM4_ssp245 annual, local tos to global tas pattern scaling"
+author: "ACS"
+date: "12/19/2019"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(ggplot2)
+library(RColorBrewer)
+
+
+devtools::load_all(path = '~/Documents/GitHub/fldgen')
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Setup {.tabset}
+
+## Select model + helpful strings and other files
+```{r names}
+esmname <- 'GFDL-CM4_ssp245'
+
+outfileyrs <- 2000:2100
+
+# CMIP6 offers gr (regridded) and gn (native) resolutions; cannot get gn to open 
+# in some cases, there are gr1, gr2, etc. Unclear the details/differences. 
+# probably regridded to different scale. Fine as long as consistent within
+# a given variable (tos vs tas)
+gridchoice <- 'gr' 
+
+
+coralsites <- as_tibble(read.csv('../data/cell_site_lat_longs.csv'))
+
+hawaii <- paste0(rep('hi', 15), 1:15)
+florida <- paste0(rep('fl', 9), 1:9)
+pr <- paste0(rep('pr_usvi', 8), 1:8)
+```
+
+
+# Load the pattern
+```{r pattern load}
+
+# the pattern is only for the ocean grid cells.
+# To make the .OUT files for combo, the full 
+# grid is necessary. 
+# It's also convenient  to have the grid 
+# lon and lat values over the ocean and their
+# corresponding colnumber in the `tos` data 
+# that has no NAs.
+# So these are included in the rds file for 
+# each pattern. 
+
+x <- readRDS(paste0('patterns/', esmname, '_annualtos.rds'))
+
+annual_pattern <- x$annual_pattern
+lonlat <- x$lonlat
+fulllon <- x$fulllon
+fulllat <- x$fulllat
+
+rm(x)
+```
+
+# Load and process hector data as needed
+Beacuse the ESM `tas` data used to calculate `tgav` and form the pattern is in terms of actual degrees, not anomaly from pre-industrial, Hector temperatures MUST be converted to actual temperature via adding 288.15.
+
+
+```{r hectorload}
+
+# hector rcp4.5 tgav trajectory
+as_tibble(read.csv('hectordata/hector_temp_rcp45.csv', stringsAsFactors = F)) %>%
+  # convert from delta tgav to tgav and then to celsius %>%
+  mutate(temp = temp + 288.15 - 273.15) ->
+  hectortgav
+
+
+# Hector rcp26 CO2 trajectory
+as_tibble(read.csv('hectordata/sample_outputstream_rcp26.csv', stringsAsFactors = F, comment.char = '#')) %>%
+     filter(variable == 'Ca',
+            spinup == 0, 
+            year >= 2000,
+            year <= 2100)  %>% select(year, value) %>%
+     rename(YEAR = year, CO2 = value) %>%
+  write.table(., 'hectordata/CO2conc_hector26.txt', sep = '\t',
+              quote = FALSE, row.names=FALSE)
+
+
+# hector rcp2.6 tgav trajectory
+as_tibble(read.csv('hectordata/sample_outputstream_rcp26.csv', stringsAsFactors = F, comment.char = '#')) %>%
+  filter(variable == 'Tgav',
+         spinup == 0, 
+         year >= 2000,
+         year <= 2100) %>%
+  rename(temp = value) %>%
+  # convert from delta tgav to tgav and then to celsius %>%
+  mutate(temp = temp + 288.15 - 273.15) ->
+  hectortgav26
+
+write.csv(hectortgav26, 'hectordata/hector_temp_rcp26.csv', row.names = F)
+```
+
+# Construct the out files
+
+## Hector rcp4.5 with the pattern
+
+
+```{r}
+
+# Get the annual TOS in each grid cell as predicted 
+# by the annual pattern for the Hector tgav
+hector_annual_tos <- pscl_apply(annual_pattern, as.vector(hectortgav$temp))
+
+
+# helper function to pull off, shape, and save  a year's data
+make_single_year_output <- function(year){
+  
+  ind <- which(hectortgav$year == year)
+  
+  tibble(tos = hector_annual_tos[ind,]) %>%
+  mutate(colnumber = as.numeric(row.names(.))) %>%
+  left_join(lonlat, by = 'colnumber') %>%
+  select(-colnumber) %>% 
+  mutate(tos = round(tos, digits = 2)) %>%
+  complete(gridlat = fulllat, gridlon = fulllon) %>%
+  replace_na(list(tos = -999)) %>%
+  spread(gridlon, tos) %>%
+  arrange(-gridlat) %>%
+  # numeric column names so matlab understands
+  rename( `1` = gridlat) %>% 
+  mutate(`2` = `1`) -> 
+  # rename( `degN/degE` = gridlat) %>%
+  # mutate(`: degN` = `degN/degE`) -> 
+  hector_annual_tos_year
+  
+  hector_annual_tos_year <- rbind(hector_annual_tos_year, names(hector_annual_tos_year))
+ 
+  # csv with numeric column names and no header helps matlab
+  write.table(hector_annual_tos_year,
+            paste0('pscl_out_files/esmgrid/', year, '_', esmname, '.csv'),
+            sep = ",", quote = FALSE, row.names=FALSE)
+
+  return(hector_annual_tos_year)
+
+}
+
+
+# make the outfile for every year
+invisible(sapply(outfileyrs, make_single_year_output))
+```
+
+
+## Hector rcp2.6 with the pattern
+```{r}
+
+
+
+# by the annual pattern for the Hector tgav
+hector_annual_tos26 <- pscl_apply(annual_pattern, as.vector(hectortgav26$temp))
+
+
+make_single_year_output26 <- function(year){
+  
+ind <- which(hectortgav26$year == year)
+
+tibble(tos = hector_annual_tos26[ind,]) %>%
+  mutate(colnumber = as.numeric(row.names(.))) %>%
+  left_join(lonlat, by = 'colnumber') %>%
+  select(-colnumber) %>% 
+  mutate(tos = round(tos, digits = 2)) %>%
+  complete(gridlat = fulllat, gridlon = fulllon) %>%
+  replace_na(list(tos = -999)) %>%
+  spread(gridlon, tos) %>%
+  arrange(-gridlat) %>%
+  # numeric column names so matlab understands
+  rename( `1` = gridlat) %>% 
+  mutate(`2` = `1`) -> 
+  hector_annual_tos26_year
+
+hector_annual_tos26_year <- rbind(hector_annual_tos26_year, names(hector_annual_tos26_year))
+
+# csv with numeric column names and no header helps matlab
+write.table(hector_annual_tos26_year,
+            paste0('pscl_out_files/esmgrid/', year,'_', esmname, '_hector26.csv'),
+            sep = ",", quote = FALSE, row.names=FALSE)
+
+return(hector_annual_tos26_year)
+}
+
+
+# make the outfile for every year
+invisible(sapply(outfileyrs, make_single_year_output26))
+```
+
