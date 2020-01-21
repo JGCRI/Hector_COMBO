@@ -121,10 +121,10 @@ if base2007 == 'y'
 elseif base2007 == 'n'
     baseyr = input('Enter base year for discounting: ');
 end
-disc03 = input('Use discount rate of 3% (default)? ','s');
-if disc03 == 'y'
-    disc = 0.03;                            % discount rate (%)
-elseif disc03 == 'n'
+disc05 = input('Use discount rate of 5% (default)? ','s');
+if disc05 == 'y'
+    disc = 0.05;                            % discount rate (%)
+elseif disc05 == 'n'
     disc = input('Enter discount rate as decimal (e.g., 0.05): ');
 end
 
