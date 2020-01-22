@@ -455,15 +455,15 @@ else
         plot(DateVec,base_cov(:,2),'b','LineWidth',2);
         hold on
         plot(DateVec,cover_avg,'r-.','LineWidth',2);
-        legend('Reduced Emissions','BAU')
+        legend('Reduced Emissions','NoParis')
         title('Cover decline through time')
         xlabel('Year')
         ylabel('Average % Cover')
-        title(['Reduced emissions vs BAU cover comparison for ',placename]);
+        title(['Reduced emissions vs NoParis cover comparison for ',placename]);
         grid on
         axis([2000 2100 0 100])
         axis 'auto y'
-        cover_plotname = strcat(path1, '\output\', placename,'_cover.pdf');
+        cover_plotname = strcat(path1, '\output\', placename,'_', path4txt,'_cover.pdf');
         eval (['print -dpdfwrite ',cover_plotname])
         
         figure(13)
@@ -474,11 +474,11 @@ else
         legend('Temperature Only','CO2 Sensitivity 1')
         xlabel('Year')
         ylabel('Average % Cover')
-        title(['BAU scenario cover through time: CO2 vs Temp Only for ',placename])
+        title(['NoParis scenario cover through time: CO2 vs Temp Only for ',placename])
         grid on
         axis([2000 2100 0 100])
         axis 'auto y'
-        TvsCo2_plotname = strcat(path1, '\output\', placename,'_cover_TvsCO2.pdf');
+        TvsCo2_plotname = strcat(path1, '\output\', placename,'_', path4txt,'_cover_TvsCO2.pdf');
         eval (['print -dpdfwrite ',TvsCo2_plotname])
         
         figure(14)
@@ -486,7 +486,7 @@ else
         plot(DateVec_yr,polval_disc,'b','LineWidth',2)
         hold on
         plot(DateVec_yr,disc_vals(:,2),'r-.','LineWidth',2)
-        legend('Reduced emissions','BAU')
+        legend('Reduced emissions','NoParis')
         % Plot POL error bounds
         plot(DateVec_yr,polval_disc_min,'b-.')
         plot(DateVec_yr,polval_disc_max,'b-.')
@@ -496,9 +496,9 @@ else
         grid on
         xlabel('Year')
         ylabel('Discounted Value (M 2007$)')
-        title({['Reduced emissions vs BAU valuation comparison for ',placename],...
+        title({['Reduced emissions vs NoParis valuation comparison for ',placename],...
             ['Sum of Lost Annual Benefits = $',num2str(round(lostbenefit)),'M']})
-        discval_plotname = strcat(path1, '\output\', placename,'_discvaluation.pdf');
+        discval_plotname = strcat(path1, '\output\', placename,'_', path4txt,'_discvaluation.pdf');
         eval (['print -dpdfwrite ',discval_plotname])
         
         figure(15)
@@ -507,7 +507,7 @@ else
         plot(DateVec_yr,polval_ndisc,'b','LineWidth',2)
         hold on
         plot(DateVec_yr,ndisc_vals(:,2),'r-.','LineWidth',2)
-        legend('Reduced emissions','BAU')
+        legend('Reduced emissions','NoParis')
         % Plot POL error bounds
         plot(DateVec_yr,polval_ndisc_min,'b-.')
         plot(DateVec_yr,polval_ndisc_max,'b-.')
@@ -516,9 +516,9 @@ else
         plot(DateVec_yr,ndisc_vals(:,3),'r-.')
         grid on
         xlabel('Year')
-        ylabel('Nominal Value (M 2007$)')
-        title(['Reduced emissions vs BAU valuation comparison for ',placename]);
-        ndiscval_plotname = strcat(path1, '\output\', placename,'_ndiscvaluation.pdf');
+        ylabel('Nominal Value (M 2015$)')
+        title(['Reduced emissions vs NoParis valuation comparison for ',placename]);
+        ndiscval_plotname = strcat(path1, '\output\', placename,'_', path4txt,'_ndiscvaluation.pdf');
         eval (['print -dpdfwrite ',ndiscval_plotname])
 
 
@@ -536,7 +536,7 @@ end
 % Save value and average cover files: Value file now has both discounted 
 % and non-discounted value, by year; cover is by month.
 % UPDATE 5/18/12: disc_vals and ndisc_vals are now 101x3. Middle column of 
-% each is the old mean value.
+% each is the old mean value. in Million USD$
 values_time = [DateVec_yr' disc_vals ndisc_vals];
 save(val_fname,'values_time','-ascii');
 save(cov_fname,'cover_output','-ascii'); 
