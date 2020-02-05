@@ -46,7 +46,7 @@ hawaii <- paste0(rep('hi', 15), 1:15)
 florida <- paste0(rep('fl', 9), 1:9)
 pr <- paste0(rep('pr_usvi', 8), 1:8)
 
-
+fontsize <- 14
 ```
 
 ## Helper functions
@@ -522,18 +522,32 @@ tmp %>%
 p1 <- ggplot(filter(coral_tos_ann, cell_id %in% hawaii),
              aes(x = anntos, y = tgav)) +
   facet_wrap(~cell_id, nrow =3) + geom_point(shape = 1, size = 0.5) +
-  scale_color_brewer(palette = 'Set3')
+  scale_color_brewer(palette = 'Set3') + 
+  ylab('Tgav(t)') + xlab('deltaSST(t)') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 p2 <- ggplot(filter(coral_tos_ann, cell_id %in% florida),
              aes(x = anntos, y = tgav)) +
   facet_wrap(~cell_id, nrow =3) + geom_point(shape = 1, size = 0.5) +
-  scale_color_brewer(palette = 'Set3')
+  scale_color_brewer(palette = 'Set3')+ 
+  ylab('Tgav(t)') + xlab('deltaSST(t)') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 p3 <- ggplot(filter(coral_tos_ann, cell_id %in% pr),
              aes(x = anntos, y = tgav)) +
   facet_wrap(~cell_id, nrow =2) + geom_point(shape = 1, size = 0.5) +
-  scale_color_brewer(palette = 'Set3')
-
+  scale_color_brewer(palette = 'Set3') + 
+  ylab('Tgav(t)') + xlab('deltaSST(t)') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 ggsave(paste0('figures/', esmname, '_HI_annualtos_tgav.png'), p1, width = 14, height = 12, units = 'in')
 
@@ -622,7 +636,7 @@ tibble(rms = rms_by_grid,
   mutate(lon = if_else(lon >= 180, lon-360, lon)) ->
   rms
 
-p1 <- ggplot(rms, aes(x = lon, y = lat, fill = rms)) + geom_tile() +
+p1_globalrms <- ggplot(rms, aes(x = lon, y = lat, fill = rms)) + geom_tile() +
   ggtitle('Local annual TOS to Tgav pattern scaling RMS in degC by grid cell') +
     annotate("text", x = coralsites[1,]$long, y = coralsites[1,]$lat, label = coralsites[1,]$cell_id,
              color = 'orange') +
@@ -690,7 +704,7 @@ p1 <- ggplot(rms, aes(x = lon, y = lat, fill = rms)) + geom_tile() +
              color = 'orange') +
   theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
 
-ggsave(paste0('figures/', esmname, '_rms_AnnTosPscl.png'), p1, width = 14, height = 11, units = 'in')
+ggsave(paste0('figures/', esmname, '_rms_AnnTosPscl.png'), p1_globalrms, width = 14, height = 11, units = 'in')
 gridExtra::grid.arrange(p1)
 
 
@@ -733,9 +747,8 @@ tmp %>%
   coral_tos_ann_reconstr
 rm(tmp)
 
-
-  p2 <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% hawaii), aes(x = long, y = lat, fill = rms)) +
-    geom_tile()  +
+ p2_hirms <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% hawaii), aes(x = long, y = lat, fill = rms)) +
+    geom_tile()  + scale_fill_gradient(low = 'gray60', high = 'gray30') + 
     annotate("text", x = coralsites[1,]$long, y = coralsites[1,]$lat, label = coralsites[1,]$cell_id,
              color = 'orange') +
     annotate("text", x = coralsites[2,]$long, y = coralsites[2,]$lat, label = coralsites[2,]$cell_id,
@@ -750,9 +763,9 @@ rm(tmp)
              color = 'orange') +
     annotate("text", x = coralsites[7,]$long, y = coralsites[7,]$lat, label = coralsites[7,]$cell_id,
              color = 'orange') +
-    annotate("text", x = coralsites[8,]$long, y = coralsites[8,]$lat, label = coralsites[8,]$cell_id,
+    annotate("text", x = coralsites[8,]$long, y = coralsites[8,]$lat + 0.25, label = coralsites[8,]$cell_id,
              color = 'orange') +
-    annotate("text", x = coralsites[9,]$long, y = coralsites[9,]$lat, label = coralsites[9,]$cell_id,
+    annotate("text", x = coralsites[9,]$long, y = coralsites[9,]$lat - 0.25, label = coralsites[9,]$cell_id,
              color = 'orange') +
     annotate("text", x = coralsites[10,]$long, y = coralsites[10,]$lat, label = coralsites[10,]$cell_id,
              color = 'orange') +
@@ -766,12 +779,17 @@ rm(tmp)
              color = 'orange') +
     annotate("text", x = coralsites[15,]$long, y = coralsites[15,]$lat, label = coralsites[15,]$cell_id,
              color = 'orange') +
-    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    ylab('Latitude') + xlab('Longitude') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 
-  p3 <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% florida),
+  p3_flrms <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% florida),
                        aes(x = long, y = lat, fill = rms)) +
-    geom_tile() + 
+    geom_tile() + scale_fill_gradient(low = 'gray60', high = 'gray30') + 
     annotate("text", x = coralsites[16,]$long, y = coralsites[16,]$lat, label = coralsites[16,]$cell_id,
              color = 'orange') +
     annotate("text", x = coralsites[17,]$long, y = coralsites[17,]$lat, label = coralsites[17,]$cell_id,
@@ -790,12 +808,17 @@ rm(tmp)
              color = 'orange') +
     annotate("text", x = coralsites[24,]$long, y = coralsites[24,]$lat, label = coralsites[24,]$cell_id,
              color = 'orange') +
-    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    ylab('Latitude') + xlab('Longitude') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 
- p4 <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% pr),
+ p4_prrms <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% pr),
                        aes(x = long, y = lat, fill = rms)) +
-    geom_tile() + 
+    geom_tile() + scale_fill_gradient(low = 'gray60', high = 'gray30') + 
     annotate("text", x = coralsites[25,]$long, y = coralsites[25,]$lat, label = coralsites[25,]$cell_id,
              color = 'orange') +
     annotate("text", x = coralsites[26,]$long, y = coralsites[26,]$lat, label = coralsites[26,]$cell_id,
@@ -812,17 +835,32 @@ rm(tmp)
              color = 'orange') +
     annotate("text", x = coralsites[32,]$long, y = coralsites[32,]$lat, label = coralsites[32,]$cell_id,
              color = 'orange') +
-    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    ylab('Latitude') + xlab('Longitude') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 
- ggsave(paste0('figures/', esmname, '_rms_annpscl_HI.png'), p2,
+ ggsave(paste0('figures/', esmname, '_rms_annpscl_HI.png'), p2_hirms,
          width = 14, height = 11, units = 'in')
 
- ggsave(paste0('figures/', esmname, '_rms_annpscl_FL.png'), p3,
+ ggsave(paste0('figures/', esmname, '_rms_annpscl_FL.png'), p3_flrms,
          width = 14, height = 11, units = 'in')
   
- ggsave(paste0('figures/', esmname, '_rms_annpscl_PR.png'), p4,
+ ggsave(paste0('figures/', esmname, '_rms_annpscl_PR.png'), p4_prrms,
          width = 14, height = 11, units = 'in')
 
 write.csv(coral_tos_ann_reconstr, paste0('rms/', esmname, '_coralsite_rms_annpscl.csv'), row.names = F)
+
+# save the rms and actual data scatter together:
+ggsave(paste0('figures/', esmname, '_rms_scatter_HI.png'), gridExtra::grid.arrange(p1, p2_hirms, nrow = 1),
+         width = 14, height = 8, units = 'in')
+
+ggsave(paste0('figures/', esmname, '_rms_scatter_FL.png'), gridExtra::grid.arrange(p2, p3_flrms, nrow = 1),
+         width = 14, height = 8, units = 'in')
+
+ggsave(paste0('figures/', esmname, '_rms_scatter_PR.png'), gridExtra::grid.arrange(p3, p4_prrms, nrow = 1),
+         width = 14, height = 8, units = 'in')
 ```
