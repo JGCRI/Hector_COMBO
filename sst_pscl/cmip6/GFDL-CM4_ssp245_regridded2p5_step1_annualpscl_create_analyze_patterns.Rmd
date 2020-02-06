@@ -36,6 +36,8 @@ latvar <- 'lat'
 lonvar <- 'lon'
 
 
+deltaTOS_refyear <- 2000
+
 #yearrange <- '200601-210012'
 siglvl <- 0.05        # significance level for statistical tests
 
@@ -45,7 +47,7 @@ hawaii <- paste0(rep('hi', 15), 1:15)
 florida <- paste0(rep('fl', 9), 1:9)
 pr <- paste0(rep('pr_usvi', 8), 1:8)
 
-
+fontsize <- 14
 ```
 
 ## Helper functions
@@ -80,7 +82,7 @@ monthparser <- function(dat){
 
 # loading and shaping data {.tabset}
 
-The CMIP6 projection runs are now 2015-2100. Currently, we are just using that range for `tas` and `tos` values to build the pattern. However, we do have to bring in a 2007 set of `tos` values because COMBO requires ocean temperature values to be in terms of change from 2007. 
+The CMIP6 projection runs are now 2015-2100. Currently, we are just using that range for `tas` and `tos` values to build the pattern. However, we do have to bring in a _hist_ref_year set of `tos` values because COMBO requires ocean temperature values to be in terms of change from _hist_ref_year. 
 
 The netcdfs are too large to track on GitHub and are all located on pic. This R markdown includes the list of files used to create this pattern so that a user can download the needed files and re-produce the pattern and analysis. Similarly, this markdown can be adapted for creating a pattern and analysis for a different ESM, using the printed lists of files to identify the analogous files for a different ESM.
 
@@ -224,7 +226,7 @@ saveRDS(tgav, paste0('tgavs/tgav_', esmname, '.rds'))
 
 ## Annual ESM gridcell tos
 
-`delta_annual_tos` in year `t` is `annual_tos(t) - annual_tos(2007)`.
+`delta_annual_tos` in year `t` is `annual_tos(t) - annual_tos(_hist_ref_year)`.
 
 ```{r loadtos}
 # #############################################################################
@@ -329,42 +331,42 @@ tos_annual_gridded <- apply(tosgrid$vardata, 2, function(vec){
 
 
 # #############################################################################
-## for COMBO, tos values actually have to be in change from 2007 tos, in degC
+## for COMBO, tos values actually have to be in change from _hist_ref_year tos, in degC
 # #############################################################################
 
-# get the 2007 historical file:
-tos2007filename <-esmfilelist[grepl('tos', esmfilelist)]
-esmind2 <- grepl('historical_', tos2007filename)
-tos2007filename <- tos2007filename[esmind2][1]
-print(tos2007filename)
+# get the historical file:
+tos_hist_filename <-esmfilelist[grepl('tos', esmfilelist)]
+esmind2 <- grepl('historical_', tos_hist_filename)
+tos_hist_filename <- tos_hist_filename[esmind2][1]
+print(tos_hist_filename)
 
 
 # The historical years and corresponding index
-substr(tos2007filename, nchar(tos2007filename)-15, nchar(tos2007filename)-5) %>%
+substr(tos_hist_filename, nchar(tos_hist_filename)-15, nchar(tos_hist_filename)-5) %>%
   as.tibble %>% 
   tidyr::separate(value, c('startyr', 'endyr'), sep = '-') %>%
   mutate(startyr = as.integer(substr(startyr, 1,4)),
          endyr = as.integer(endyr)) ->
   histyears
 histyears <- histyears$startyr:histyears$endyr
-rowindex2007 <- which(histyears == 2007)
+rowindex_hist_ref_year <- which(histyears == deltaTOS_refyear)
 
 
-# load the actual netcdf that has the 2007 data
-tos2007grid <- lapply(tos2007filename, readtos)
+# load the actual netcdf that has the _hist_ref_year data
+tos_hist_ref_yeargrid <- lapply(tos_hist_filename, readtos)
 
 
-# Check the units on 2007 tos, convert to degC if necessary:
-  ncin <- nc_open(tos2007filename)
+# Check the units on _hist_ref_year tos, convert to degC if necessary:
+  ncin <- nc_open(tos_hist_filename)
   tosunit <-  ncatt_get(ncin, 'tos', 'units')$value
   nc_close(ncin)
       
-  print(paste(tos2007filename,'unit is', tosunit))
+  print(paste(tos_hist_filename,'unit is', tosunit))
       
   if(tosunit == 'K'){
     
     print('converting from K to degC')
-    tos2007grid$vardata <- (tos2007grid$vardata - 273.15)
+    tos_hist_ref_yeargrid$vardata <- (tos_hist_ref_yeargrid$vardata - 273.15)
     
     }else if(tosunit == 'degC'){
       
@@ -379,11 +381,11 @@ tos2007grid <- lapply(tos2007filename, readtos)
 # and concatenate so that single griddata instead of list of  griddatas.
 # It's only one file, so the concatenating is only unlisting while
 # maintainging griddata structure.
-tos2007grid <- concatGrids.general(tos2007grid)  
+tos_hist_ref_yeargrid <- concatGrids.general(tos_hist_ref_yeargrid)  
 
 
-# Convert the data containing 2007 from monthly data to annual
-tos2007_annual_grid <- apply(tos2007grid$vardata, 2, function(vec){
+# Convert the data containing _hist_ref_year from monthly data to annual
+tos_hist_ref_year_annual_grid <- apply(tos_hist_ref_yeargrid$vardata, 2, function(vec){
    
   numYxR <- length(vec)/12
   
@@ -397,13 +399,13 @@ tos2007_annual_grid <- apply(tos2007grid$vardata, 2, function(vec){
 })
 
 
-# Pull off the row with just 2007
-tos2007_annual_grid <- tos2007_annual_grid[rowindex2007,]
+# Pull off the row with just _hist_ref_year
+tos_hist_ref_year_annual_grid <- tos_hist_ref_year_annual_grid[rowindex_hist_ref_year,]
 
 
 # Calculate the deltaTOS values over the projection period,
-# where the delta is from TOS2007, per COMBO having that base year.
-delta_tos_annual_gridded <- t(apply(tos_annual_gridded, 1, function(row){ row - tos2007_annual_grid }))
+# where the delta is from TOS_hist_ref_year, per COMBO having that base year.
+delta_tos_annual_gridded <- t(apply(tos_annual_gridded, 1, function(row){ row - tos_hist_ref_year_annual_grid }))
 ```
 
 # na values for tos
@@ -518,20 +520,36 @@ tmp %>%
   coral_tos_ann
 
 
+
 p1 <- ggplot(filter(coral_tos_ann, cell_id %in% hawaii),
              aes(x = anntos, y = tgav)) +
   facet_wrap(~cell_id, nrow =3) + geom_point(shape = 1, size = 0.5) +
-  scale_color_brewer(palette = 'Set3')
+  scale_color_brewer(palette = 'Set3') + 
+  ylab('Tgav(t)') + xlab('deltaSST(t)') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 p2 <- ggplot(filter(coral_tos_ann, cell_id %in% florida),
              aes(x = anntos, y = tgav)) +
   facet_wrap(~cell_id, nrow =3) + geom_point(shape = 1, size = 0.5) +
-  scale_color_brewer(palette = 'Set3')
+  scale_color_brewer(palette = 'Set3')+ 
+  ylab('Tgav(t)') + xlab('deltaSST(t)') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 p3 <- ggplot(filter(coral_tos_ann, cell_id %in% pr),
              aes(x = anntos, y = tgav)) +
   facet_wrap(~cell_id, nrow =2) + geom_point(shape = 1, size = 0.5) +
-  scale_color_brewer(palette = 'Set3')
+  scale_color_brewer(palette = 'Set3') + 
+  ylab('Tgav(t)') + xlab('deltaSST(t)') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 
 ggsave(paste0('figures/', esmname, '_HI_annualtos_tgav.png'), p1, width = 14, height = 12, units = 'in')
@@ -548,7 +566,7 @@ gridExtra::grid.arrange(p1, p2, p3, nrow = 1)
 
 ## Do the scaling
 
-Relates `tgav` in degC to `deltaTOS` in change from gridcell TOS2007 degC 
+Relates `tgav` in degC to `deltaTOS` in change from gridcell TOS_hist_ref_year degC 
 
 
 ```{r pscl}
@@ -621,7 +639,7 @@ tibble(rms = rms_by_grid,
   mutate(lon = if_else(lon >= 180, lon-360, lon)) ->
   rms
 
-p1 <- ggplot(rms, aes(x = lon, y = lat, fill = rms)) + geom_tile() +
+p1_globalrms <- ggplot(rms, aes(x = lon, y = lat, fill = rms)) + geom_tile() +
   ggtitle('Local annual TOS to Tgav pattern scaling RMS in degC by grid cell') +
     annotate("text", x = coralsites[1,]$long, y = coralsites[1,]$lat, label = coralsites[1,]$cell_id,
              color = 'orange') +
@@ -689,7 +707,7 @@ p1 <- ggplot(rms, aes(x = lon, y = lat, fill = rms)) + geom_tile() +
              color = 'orange') +
   theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
 
-ggsave(paste0('figures/', esmname, '_rms_AnnTosPscl.png'), p1, width = 14, height = 11, units = 'in')
+ggsave(paste0('figures/', esmname, '_rms_AnnTosPscl.png'), p1_globalrms, width = 14, height = 11, units = 'in')
 gridExtra::grid.arrange(p1)
 
 
@@ -733,8 +751,8 @@ tmp %>%
 rm(tmp)
 
 
-  p2 <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% hawaii), aes(x = long, y = lat, fill = rms)) +
-    geom_tile()  +
+ p2_hirms <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% hawaii), aes(x = long, y = lat, fill = rms)) +
+    geom_tile()  + scale_fill_gradient(low = 'gray60', high = 'gray30') + 
     annotate("text", x = coralsites[1,]$long, y = coralsites[1,]$lat, label = coralsites[1,]$cell_id,
              color = 'orange') +
     annotate("text", x = coralsites[2,]$long, y = coralsites[2,]$lat, label = coralsites[2,]$cell_id,
@@ -749,9 +767,9 @@ rm(tmp)
              color = 'orange') +
     annotate("text", x = coralsites[7,]$long, y = coralsites[7,]$lat, label = coralsites[7,]$cell_id,
              color = 'orange') +
-    annotate("text", x = coralsites[8,]$long, y = coralsites[8,]$lat, label = coralsites[8,]$cell_id,
+    annotate("text", x = coralsites[8,]$long, y = coralsites[8,]$lat + 0.25, label = coralsites[8,]$cell_id,
              color = 'orange') +
-    annotate("text", x = coralsites[9,]$long, y = coralsites[9,]$lat, label = coralsites[9,]$cell_id,
+    annotate("text", x = coralsites[9,]$long, y = coralsites[9,]$lat - 0.25, label = coralsites[9,]$cell_id,
              color = 'orange') +
     annotate("text", x = coralsites[10,]$long, y = coralsites[10,]$lat, label = coralsites[10,]$cell_id,
              color = 'orange') +
@@ -765,12 +783,17 @@ rm(tmp)
              color = 'orange') +
     annotate("text", x = coralsites[15,]$long, y = coralsites[15,]$lat, label = coralsites[15,]$cell_id,
              color = 'orange') +
-    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    ylab('Latitude') + xlab('Longitude') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 
-  p3 <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% florida),
+  p3_flrms <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% florida),
                        aes(x = long, y = lat, fill = rms)) +
-    geom_tile() + 
+    geom_tile() + scale_fill_gradient(low = 'gray60', high = 'gray30') + 
     annotate("text", x = coralsites[16,]$long, y = coralsites[16,]$lat, label = coralsites[16,]$cell_id,
              color = 'orange') +
     annotate("text", x = coralsites[17,]$long, y = coralsites[17,]$lat, label = coralsites[17,]$cell_id,
@@ -789,12 +812,17 @@ rm(tmp)
              color = 'orange') +
     annotate("text", x = coralsites[24,]$long, y = coralsites[24,]$lat, label = coralsites[24,]$cell_id,
              color = 'orange') +
-    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    ylab('Latitude') + xlab('Longitude') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 
- p4 <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% pr),
+ p4_prrms <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% pr),
                        aes(x = long, y = lat, fill = rms)) +
-    geom_tile() + 
+    geom_tile() + scale_fill_gradient(low = 'gray60', high = 'gray30') + 
     annotate("text", x = coralsites[25,]$long, y = coralsites[25,]$lat, label = coralsites[25,]$cell_id,
              color = 'orange') +
     annotate("text", x = coralsites[26,]$long, y = coralsites[26,]$lat, label = coralsites[26,]$cell_id,
@@ -811,17 +839,32 @@ rm(tmp)
              color = 'orange') +
     annotate("text", x = coralsites[32,]$long, y = coralsites[32,]$lat, label = coralsites[32,]$cell_id,
              color = 'orange') +
-    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    ylab('Latitude') + xlab('Longitude') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
 
 
- ggsave(paste0('figures/', esmname, '_rms_annpscl_HI.png'), p2,
+ ggsave(paste0('figures/', esmname, '_rms_annpscl_HI.png'), p2_hirms,
          width = 14, height = 11, units = 'in')
 
- ggsave(paste0('figures/', esmname, '_rms_annpscl_FL.png'), p3,
+ ggsave(paste0('figures/', esmname, '_rms_annpscl_FL.png'), p3_flrms,
          width = 14, height = 11, units = 'in')
   
- ggsave(paste0('figures/', esmname, '_rms_annpscl_PR.png'), p4,
+ ggsave(paste0('figures/', esmname, '_rms_annpscl_PR.png'), p4_prrms,
          width = 14, height = 11, units = 'in')
 
 write.csv(coral_tos_ann_reconstr, paste0('rms/', esmname, '_coralsite_rms_annpscl.csv'), row.names = F)
+
+# save the rms and actual data scatter together:
+ggsave(paste0('figures/', esmname, '_rms_scatter_HI.png'), gridExtra::grid.arrange(p1, p2_hirms, nrow = 1),
+         width = 14, height = 8, units = 'in')
+
+ggsave(paste0('figures/', esmname, '_rms_scatter_FL.png'), gridExtra::grid.arrange(p2, p3_flrms, nrow = 1),
+         width = 14, height = 8, units = 'in')
+
+ggsave(paste0('figures/', esmname, '_rms_scatter_PR.png'), gridExtra::grid.arrange(p3, p4_prrms, nrow = 1),
+         width = 14, height = 8, units = 'in')
 ```
