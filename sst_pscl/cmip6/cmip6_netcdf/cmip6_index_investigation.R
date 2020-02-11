@@ -8,26 +8,27 @@ library(tibble)
 files <- as.tibble(read.csv('cmip6/cmip6_netcdf/cmip6_archive_index.csv', stringsAsFactors = F))
 
 files %>%
-  filter(variable == 'tos' | variable == 'tas')  %>%
+  filter(grepl('.nc', file),
+         variable == 'tos' | variable == 'tas')  %>%
   select(model, variable, experiment, domain) %>%  
   filter(experiment == "ssp245" | experiment == 'historical') %>%
   distinct %>%
   filter(grepl('mon', .$domain)) %>%
   arrange(model) %>%
-  as.data.frame()
+  filter((variable == 'tas' & experiment == 'ssp245') | variable == 'tos') ->
+  files2 
 
 
+files2 %>%
+  as.data.frame() 
 
-files %>%
-  filter(variable == 'tos')  %>% 
-  select(model, experiment) %>%
-  filter(experiment == 'ssp245' | experiment == 'historical') %>%
+
+# arrange so that just get a list of models with completed data.
+files2 %>%
+  unite(united, c('variable', 'experiment'), sep = '~') %>% 
+  mutate(val = 1) %>%
+  select(-domain) %>%
   distinct %>%
-  arrange(model) %>%
-  as.data.frame()
-
-files %>%
-  filter(variable == 'tas')  %>% 
-  select(model, experiment)%>%
-  filter(experiment == 'ssp245' | experiment == 'historical' | experiment == 'esm-hist') %>%
-  distinct
+  spread(united, val) %>%
+  na.omit %>%
+  select(model)
