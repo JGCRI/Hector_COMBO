@@ -1,0 +1,269 @@
+---
+title: "NESM3_ssp245 annual, local tos to global tas pattern scaling"
+author: "ACS"
+date: "12/19/2019"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(ggplot2)
+library(RColorBrewer)
+
+
+devtools::load_all(path = '~/Documents/GitHub/fldgen')
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Setup {.tabset}
+
+## Select model + helpful strings and other files
+```{r names}
+esmname <- 'rgr2p5-NESM3_ssp245'
+esmfilelist <- list.files(paste0('cmip6_netcdf/', substr(esmname, 8, nchar(esmname))), full.names = TRUE)
+esmfilelist <- esmfilelist[grepl('rgr2p5-', esmfilelist)]
+
+outfileyrs <- 2000:2100
+
+# CMIP6 offers gr (regridded) and gn (native) resolutions; cannot get gn to open 
+# in some cases, there are gr1, gr2, etc. Unclear the details/differences. 
+# probably regridded to different scale. Fine as long as consistent within
+# a given variable (tos vs tas)
+gridchoice <- 'gr' 
+
+
+coralsites <- as_tibble(read.csv('../data/cell_site_lat_longs.csv'))
+
+hawaii <- paste0(rep('hi', 15), 1:15)
+florida <- paste0(rep('fl', 9), 1:9)
+pr <- paste0(rep('pr_usvi', 8), 1:8)
+```
+
+
+## Helper function to pull off, shape, and save  a year's data that can be read by COMBO
+```{r helperfunction}
+
+# helper function to pull off, shape, and save  a year's data
+make_single_year_output <- function(outdir, tosdata, tgavdata, year){
+  
+  ind <- which(tgavdata$year == year)
+  
+  tibble(tos = tosdata[ind,]) %>%
+    mutate(colnumber = as.numeric(row.names(.))) %>%
+    left_join(lonlat, by = 'colnumber') %>%
+    select(-colnumber) %>% 
+    mutate(tos = round(tos, digits = 2)) %>%
+    complete(gridlat = fulllat, gridlon = fulllon) %>%
+    replace_na(list(tos = -999)) %>%
+    spread(gridlon, tos) %>%
+    arrange(-gridlat) %>%
+    # numeric column names so matlab understands
+    rename( `1` = gridlat) %>% 
+    mutate(`2` = `1`) -> 
+    # rename( `degN/degE` = gridlat) %>%
+    # mutate(`: degN` = `degN/degE`) -> 
+    annualdata
+  
+  annualdata <- rbind(annualdata, names(annualdata))
+  
+  # csv with numeric column names and no header helps matlab
+  write.table(annualdata,
+              paste0('pscl_out_files/COMBOgrid/', outdir, '/', year, '_', esmname, '_hector_', outdir, '.csv'),
+              sep = ",", quote = FALSE, row.names=FALSE)
+  
+}
+```
+
+# Load the pattern
+```{r pattern load}
+
+# the pattern is only for the ocean grid cells.
+# To make the .OUT files for combo, the full 
+# grid is necessary. 
+# It's also convenient  to have the grid 
+# lon and lat values over the ocean and their
+# corresponding colnumber in the `tos` data 
+# that has no NAs.
+# So these are included in the rds file for 
+# each pattern. 
+
+x <- readRDS(paste0('patterns/', esmname, '_annualtos.rds'))
+
+annual_pattern <- x$annual_pattern
+lonlat <- x$lonlat
+fulllon <- x$fulllon
+fulllat <- x$fulllat
+
+rm(x)
+```
+
+# Load and process hector data as needed
+Beacuse the ESM `tas` data used to calculate `tgav` and form the pattern is in terms of actual degrees, not anomaly from pre-industrial, Hector temperatures MUST be converted to actual temperature via adding 288.15.
+
+
+```{r hectorload}
+
+# hector rcp4.5 tgav trajectory
+as_tibble(read.csv('hectordata/hector_temp_rcp45.csv', stringsAsFactors = F)) %>%
+  # convert from delta tgav to tgav and then to celsius %>%
+  mutate(temp = temp + 288.15 - 273.15) ->
+  hector.tgav45
+
+
+# hector rcp2.6 tgav trajectory
+as_tibble(read.csv('hectordata/hector_temp_rcp26.csv', stringsAsFactors = F, comment.char = '#')) %>%
+  # convert from delta tgav to tgav and then to celsius %>%
+  mutate(temp = temp + 288.15 - 273.15) ->
+  hector.tgav26
+
+
+# hector noparis tgav trajectory
+as_tibble(read.csv('hectordata/temp_noparis.csv', stringsAsFactors = F, comment.char = '#')) %>%
+  # convert from delta tgav to tgav and then to celsius %>%
+  mutate(temp = tgav + 288.15 - 273.15) ->
+  hector.tgavnoparis
+
+
+# hector paris tgav trajectory
+as_tibble(read.csv('hectordata/temp_paris.csv', stringsAsFactors = F, comment.char = '#')) %>%
+  # convert from delta tgav to tgav and then to celsius %>%
+  mutate(temp = tgav + 288.15 - 273.15) ->
+  hector.tgavparis
+
+
+# hector parisplus tgav trajectory
+as_tibble(read.csv('hectordata/temp_parisplus.csv', stringsAsFactors = F, comment.char = '#')) %>%
+  # convert from delta tgav to tgav and then to celsius %>%
+  mutate(temp = tgav + 288.15 - 273.15) ->
+  hector.tgavparisplus
+
+
+# hector parisref tgav trajectory
+as_tibble(read.csv('hectordata/temp_parisref.csv', stringsAsFactors = F, comment.char = '#')) %>%
+  # convert from delta tgav to tgav and then to celsius %>%
+  mutate(temp = tgav + 288.15 - 273.15) ->
+  hector.tgavparisref
+
+
+```
+
+# Construct the out files
+
+## Hector rcp4.5 with the pattern
+
+
+```{r}
+
+# Get the annual TOS in each grid cell as predicted 
+# by the annual pattern for the Hector tgav 
+hector_annual_tos <- pscl_apply(annual_pattern, as.vector(hector.tgav45$temp))
+
+# make the outfile for every year
+invisible(
+  for(yr in outfileyrs) {
+    
+    make_single_year_output(outdir = 'RCP45', tgavdata = hector.tgav45, 
+                            tosdata = hector_annual_tos, year = yr)
+    
+  }
+)
+
+```
+
+
+## Hector rcp2.6 with the pattern
+```{r}
+# by the annual pattern for the Hector tgav
+hector_annual_tos26 <- pscl_apply(annual_pattern, as.vector(hector.tgav26$temp))
+
+# make the outfile for every year
+invisible(
+  for(yr in outfileyrs) {
+    
+    make_single_year_output(outdir = 'RCP26', tgavdata = hector.tgav26, 
+                            tosdata = hector_annual_tos26, year = yr)
+    
+  }
+)
+```
+
+
+## Hector no paris
+```{r}
+# by the annual pattern for the Hector tgav
+hector_annual_tosnoparis <- pscl_apply(annual_pattern, as.vector(hector.tgavnoparis$temp))
+
+# make the outfile for every year
+invisible(
+  for(yr in outfileyrs) {
+    
+    make_single_year_output(outdir = 'noparis', tgavdata = hector.tgavnoparis, 
+                            tosdata = hector_annual_tosnoparis, year = yr)
+    
+  }
+)
+
+```
+
+
+## Hector paris
+```{r}
+# by the annual pattern for the Hector tgav
+hector_annual_tosparis <- pscl_apply(annual_pattern, as.vector(hector.tgavparis$temp))
+
+# make the outfile for every year
+invisible(
+  for(yr in outfileyrs) {
+    
+    make_single_year_output(outdir = 'paris', tgavdata = hector.tgavparis, 
+                            tosdata = hector_annual_tosparis, year = yr)
+    
+  }
+)
+
+```
+
+
+## Hector paris plus
+```{r}
+# by the annual pattern for the Hector tgav
+hector_annual_tosparisplus <- pscl_apply(annual_pattern, as.vector(hector.tgavparisplus$temp))
+
+# make the outfile for every year
+invisible(
+  for(yr in outfileyrs) {
+    
+    make_single_year_output(outdir = 'parisplus', tgavdata = hector.tgavparisplus, 
+                            tosdata = hector_annual_tosparisplus, year = yr)
+    
+  }
+)
+
+```
+
+
+## Hector paris ref
+```{r}
+# by the annual pattern for the Hector tgav
+hector_annual_tosparisref <- pscl_apply(annual_pattern, as.vector(hector.tgavparisref$temp))
+
+# make the outfile for every year
+invisible(
+  for(yr in outfileyrs) {
+    
+    make_single_year_output(outdir = 'parisref', tgavdata = hector.tgavparisref, 
+                            tosdata = hector_annual_tosparisref, year = yr)
+    
+  }
+)
+
+```
