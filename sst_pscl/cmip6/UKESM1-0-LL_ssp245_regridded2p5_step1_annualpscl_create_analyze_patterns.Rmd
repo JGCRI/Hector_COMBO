@@ -1,0 +1,868 @@
+---
+title: "Regridded to COMBO 2.5 deg grid, UKESM1-0-LL_ssp245 annual, local tos to global tas pattern scaling"
+author: "ACS"
+date: "12/19/2019"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(ggplot2)
+library(RColorBrewer) 
+library(ncdf4)
+
+
+devtools::load_all(path = '~/Documents/GitHub/fldgen')
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Setup {.tabset}
+
+## Select model + helpful strings and other files
+```{r names}
+esmname <- 'rgr2p5-UKESM1-0-LL_ssp245'
+esmfilelist <- list.files(paste0('cmip6_netcdf/', substr(esmname, 8, nchar(esmname))), full.names = TRUE)
+esmfilelist <- esmfilelist[grepl('rgr2p5-', esmfilelist)]
+latvar <- 'lat'
+lonvar <- 'lon'
+
+
+deltaTOS_refyear <- 2000
+
+#yearrange <- '200601-210012'
+siglvl <- 0.05        # significance level for statistical tests
+
+coralsites <- as_tibble(read.csv('../data/cell_site_lat_longs.csv'))
+
+hawaii <- paste0(rep('hi', 15), 1:15)
+florida <- paste0(rep('fl', 9), 1:9)
+pr <- paste0(rep('pr_usvi', 8), 1:8)
+
+fontsize <- 14
+```
+
+## Helper functions
+```{r helperfunctions}
+
+# read in tas netcdfs via fldgen function
+readtas <- function(fn) {read.general(fn, varname = 'tas',
+                                     latvar=latvar, lonvar=lonvar)}
+
+# read in tos netcdfs via fldgen function
+readtos <- function(fn) {read.general(fn, varname = 'tos',
+                                     latvar=latvar, lonvar=lonvar)}
+
+# convert a matrix of nMonthYearRealizations X ngrid data to a list of 12
+# matrices that are nYearRealizations X ngrid.
+monthparser <- function(dat){
+
+  # number of years X realizations
+  # ie the number of rows that will go in each month's matrix
+  numYxR <- 1:(nrow(dat)/12)
+  
+  # make a list with 12 entires - each entrie has the 
+  monthvardata <- lapply(as.list(1:12), function(g){
+    
+    rownums <- g + 12*(numYxR-1)
+    return(dat[rownums, ])
+  } ) 
+  
+  return(monthvardata)
+}
+```
+
+# loading and shaping data {.tabset}
+
+The CMIP6 projection runs are now 2015-2100. Currently, we are just using that range for `tas` and `tos` values to build the pattern. However, we do have to bring in a _hist_ref_year set of `tos` values because COMBO requires ocean temperature values to be in terms of change from _hist_ref_year. 
+
+The netcdfs are too large to track on GitHub and are all located on pic. This R markdown includes the list of files used to create this pattern so that a user can download the needed files and re-produce the pattern and analysis. Similarly, this markdown can be adapted for creating a pattern and analysis for a different ESM, using the printed lists of files to identify the analogous files for a different ESM.
+
+
+## Annual ESM global average tas 
+
+```{r loadtas}
+# #############################################################################
+## vector with relevant tas files
+# #############################################################################
+
+taslist <- esmfilelist[grepl('tas', esmfilelist)]
+esmind1 <- grepl(esmname, taslist)
+taslist <- taslist[esmind1]
+print(taslist)
+
+
+# #############################################################################
+## read in netcdfs, check units and concatenate.
+# #############################################################################
+
+# want to work with each netcdf file individually so that each file's temperature
+# units can be checked and converted to degC if needed. Then will concatenate 
+# the files into a single griddata with units of degC. The fldgen readdata
+# function just assumes all netcdf files being concatenated have the same units 
+# with no explicit checks, hence the common call of reading in a list of files and 
+# concatenating in one step:
+# # tasgrid <- concatGrids.general(lapply(taslist, readtas))  
+# We have to be more careful with our units.
+## Doing the unit check with a for loop instead of an apply because the apply's
+## do some level of restructuring/renaming in the function call formulation of 
+## using an apply to replace a for that breaks concatGrids.general. 
+## Sidestepping issue for now.
+
+  # read in each netcdf to form a list.
+  tas_file_list <- lapply(taslist, readtas)
+  
+  # Check the units of each TAS netcdf files in the list.
+  # If the units are in K, convert to degC.
+  # If the units are in degC, leave alone. 
+  ## TODO at some point maybe check the time units too. 
+  ## However, more confident these are consistent across netcdf
+  ## files than the temperature units seem to be for cmip6.
+  for (i in 1:length(taslist)){
+    
+    # open the netcdf, get the unit
+    # for the tas and close the netcdf.
+    ## TODO this is duplicative of work
+    ## that is done in the readtas function.
+    ## At some point, make more efficient, 
+    ## possibly via update to fldgen's readdata
+    ## or concatGrids.general functions to
+    ## include some unit checking.
+    ## For now, we're working with so few files
+    ## at a time that the repeated work is 
+    ## tolerable.
+    ncin <- nc_open(taslist[i])
+    tasunit <-  ncatt_get(ncin, 'tas', 'units')$value
+    nc_close(ncin)
+    
+    print(paste(taslist[i],'unit is', tasunit))
+    
+    if(tasunit == 'K'){
+      
+      print('converting from K to degC')
+      tas_file_list[[i]]$vardata <- (tas_file_list[[i]]$vardata - 273.15)
+      
+    }else if(tasunit == 'degC'){
+      
+      print ('already in degC, no change')
+      
+    }else{
+      
+      print('unrecognized unit, no change')
+    }
+    
+    rm(tasunit)
+  }
+ 
+  # Concatenate
+  tasgrid <- concatGrids.general(tas_file_list)
+  rm(tas_file_list)
+
+  
+# #############################################################################  
+## quick print statement of how our lat and lon are divided:
+# #############################################################################
+  
+print(paste('Latitude is divided over', length(tasgrid$lat), 'bins =', 180/length(tasgrid$lat), 'degrees'))
+print(paste('Longitude is divided over', length(tasgrid$lon), 'bins =', 360/length(tasgrid$lon), 'degrees'))
+str(tasgrid)
+
+
+# #############################################################################
+## monthly tgav values 
+# #############################################################################
+
+# parse out the data from one matrix with all months, years, realizations to
+# a list of 12 matrices with all years realizations.
+monthlyvardata <- monthparser(tasgrid$vardata)
+
+# calculate the global average value of tas for each month
+tgav_monthly <- lapply(monthlyvardata, function(g){
+  
+  g %*% tasgrid$globalop
+  
+})
+
+str(tgav_monthly)
+saveRDS(tgav_monthly, paste0('tgavs/monthly_tgav_', esmname, '.rds'))
+
+
+# #############################################################################
+## go from monthly to yearly tas in each grid cell
+# #############################################################################
+
+tas_annual_gridded <- apply(tasgrid$vardata, 2, function(vec){
+   
+  numYxR <- length(vec)/12
+  
+  yearmean <- sapply(1:numYxR, function(i){
+    
+    janrownum <- 1 + 12*(i-1)
+    
+    return(mean(vec[janrownum:(janrownum + 11)]))
+    
+  } ) 
+})
+
+
+# #############################################################################
+## then gridded to global and save
+# #############################################################################
+
+tgav <- tas_annual_gridded %*% tasgrid$globalop 
+str(tgav)
+saveRDS(tgav, paste0('tgavs/tgav_', esmname, '.rds'))
+```
+
+
+
+## Annual ESM gridcell tos
+
+`delta_annual_tos` in year `t` is `annual_tos(t) - annual_tos(_hist_ref_year)`.
+
+```{r loadtos}
+# #############################################################################
+## vector with relevant tos files
+# #############################################################################
+
+toslist <- esmfilelist[grepl('tos', esmfilelist)]
+esmind2 <- grepl('ssp245_',toslist)
+toslist <- toslist[esmind2]
+esmind3 <- grepl(esmname, toslist)
+toslist <- toslist[esmind3]
+print(toslist)
+
+
+# #############################################################################
+## read in netcdfs, check units and concatenate.
+# #############################################################################
+
+# want to work with each netcdf file individually so that each file's temperature
+# units can be checked and converted to degC if needed. Then will concatenate 
+# the files into a single griddata with units of degC. The fldgen readdata
+# function just assumes all netcdf files being concatenated have the same units 
+# with no explicit checks, hence the common call of reading in a list of files and 
+# concatenating in one step:
+# # tosgrid <- concatGrids.general(lapply(toslist, readtos))  
+# We have to be more careful with our units.
+
+  # read in each netcdf to form a list.
+  tos_file_list <- lapply(toslist, readtos)
+  
+  # Check the units of each TOS netcdf files in the list.
+  # If the units are in K, convert to degC.
+  # If the units are in degC, leave alone. 
+  ## TODO at some point maybe check the time units too. 
+  ## However, more confident these are consistent across netcdf
+  ## files than the temperature units seem to be for cmip6.
+  for (i in 1:length(toslist)){
+    
+    # open the netcdf, get the unit
+    # for the tas and close the netcdf.
+    ## TODO this is duplicative of work
+    ## that is done in the readtas function.
+    ## At some point, make more efficient, 
+    ## possibly via update to fldgen's readdata
+    ## or concatGrids.general functions to
+    ## include some unit checking.
+    ## For now, we're working with so few files
+    ## at a time that the repeated work is 
+    ## tolerable.
+    ncin <- nc_open(toslist[i])
+    tosunit <-  ncatt_get(ncin, 'tos', 'units')$value
+    nc_close(ncin)
+    
+    print(paste(toslist[i],'unit is', tosunit))
+    
+    if(tosunit == 'K'){
+      
+      print('converting from K to degC')
+      tos_file_list[[i]]$vardata <- (tos_file_list[[i]]$vardata - 273.15)
+      
+    }else if(tosunit == 'degC'){
+      
+      print ('already in degC, no change')
+      
+    }else{
+      
+      print('unrecognized unit, no change')
+    }
+    
+    rm(tosunit)
+  }
+  
+  # Concatenate
+  tosgrid <- concatGrids.general(tos_file_list)
+  rm(tos_file_list)
+
+  
+# #############################################################################
+## quick print statement of how our lat and lon are divided:
+# #############################################################################
+  
+print(paste('Latitude is divided over', length(tosgrid$lat), 'bins =', 180/length(tosgrid$lat), 'degrees'))
+print(paste('Longitude is divided over', length(tosgrid$lon), 'bins =', 360/length(tosgrid$lon), 'degrees'))
+str(tosgrid)
+
+# #############################################################################
+## annual values from the monthly
+# #############################################################################
+
+tos_annual_gridded <- apply(tosgrid$vardata, 2, function(vec){
+   
+  numYxR <- length(vec)/12
+  
+  yearmean <- sapply(1:numYxR, function(i){
+    
+    janrownum <- 1 + 12*(i-1)
+    
+    return(mean(vec[janrownum:(janrownum + 11)]))
+    
+  } ) 
+})
+
+
+# #############################################################################
+## for COMBO, tos values actually have to be in change from _hist_ref_year tos, in degC
+# #############################################################################
+
+# get the historical file:
+tos_hist_filename <-esmfilelist[grepl('tos', esmfilelist)]
+esmind2 <- grepl('historical_', tos_hist_filename)
+tos_hist_filename <- tos_hist_filename[esmind2][1]
+print(tos_hist_filename)
+
+
+# The historical years and corresponding index
+substr(tos_hist_filename, nchar(tos_hist_filename)-15, nchar(tos_hist_filename)-5) %>%
+  as.tibble %>% 
+  tidyr::separate(value, c('startyr', 'endyr'), sep = '-') %>%
+  mutate(startyr = as.integer(substr(startyr, 1,4)),
+         endyr = as.integer(endyr)) ->
+  histyears
+histyears <- histyears$startyr:histyears$endyr
+rowindex_hist_ref_year <- which(histyears == deltaTOS_refyear)
+
+
+# load the actual netcdf that has the _hist_ref_year data
+tos_hist_ref_yeargrid <- lapply(tos_hist_filename, readtos)
+
+
+# Check the units on _hist_ref_year tos, convert to degC if necessary:
+  ncin <- nc_open(tos_hist_filename)
+  tosunit <-  ncatt_get(ncin, 'tos', 'units')$value
+  nc_close(ncin)
+      
+  print(paste(tos_hist_filename,'unit is', tosunit))
+      
+  if(tosunit == 'K'){
+    
+    print('converting from K to degC')
+    tos_hist_ref_yeargrid$vardata <- (tos_hist_ref_yeargrid$vardata - 273.15)
+    
+    }else if(tosunit == 'degC'){
+      
+      print ('already in degC, no change')
+      
+    }else{
+      
+      print('unrecognized unit, no change')
+      
+    }
+  
+# and concatenate so that single griddata instead of list of  griddatas.
+# It's only one file, so the concatenating is only unlisting while
+# maintainging griddata structure.
+tos_hist_ref_yeargrid <- concatGrids.general(tos_hist_ref_yeargrid)  
+
+
+# Convert the data containing _hist_ref_year from monthly data to annual
+tos_hist_ref_year_annual_grid <- apply(tos_hist_ref_yeargrid$vardata, 2, function(vec){
+   
+  numYxR <- length(vec)/12
+  
+  yearmean <- sapply(1:numYxR, function(i){
+    
+    janrownum <- 1 + 12*(i-1)
+    
+    return(mean(vec[janrownum:(janrownum + 11)]))
+    
+  } ) 
+})
+
+
+# Pull off the row with just _hist_ref_year
+tos_hist_ref_year_annual_grid <- tos_hist_ref_year_annual_grid[rowindex_hist_ref_year,]
+
+
+# Calculate the deltaTOS values over the projection period,
+# where the delta is from TOS_hist_ref_year, per COMBO having that base year.
+delta_tos_annual_gridded <- t(apply(tos_annual_gridded, 1, function(row){ row - tos_hist_ref_year_annual_grid }))
+```
+
+# na values for tos
+
+`tos` is only defined over the ocean. All columns corresponding to land cells are populated with NA values.
+
+These were not dropped when we used `tas` to calculate global average temperatures in each month. I'm inclined to keep it that way because:
+
+1. It's a truer representation of tgav. 
+2. It would be annoying to rewrite the code above to drop land cells from the `tas` data for calculating tgav. Doable, but annoying. 
+
+If we think the inconsistency would be an issue, I'll do it with no further complaints. 
+
+```{r dropnas}
+
+
+# fldgen drop_na only works on full fldgen objects
+delta_tosgrid_ann <- tosgrid
+delta_tosgrid_ann$vardata <- delta_tos_annual_gridded
+delta_tosgrid_ann$time <- (0:(nrow(delta_tos_annual_gridded) -1) )
+
+# For each month, drop the NA values
+annual_ocean_data <- drop_NAs(delta_tosgrid_ann)
+```
+
+# Pattern scaling
+
+## check appropriateness of scaling at the sites of interest
+
+Limited number of sites = can check if the annual local TOS is actually related to Tgav
+
+
+```{r tos-tasplot, echo = FALSE}
+
+# esm tos grid
+as_tibble(annual_ocean_data$coord) %>%
+  rename(gridlat = lat,
+         gridlon = lon) %>%
+  mutate(colnumber = as.numeric(row.names(.))) ->
+  lonlat
+
+lonlat %>%
+  select(gridlon) %>%
+  distinct -> #  %>%
+  # mutate(gridlon = if_else(gridlon <= 0, gridlon + 360, gridlon)) ->
+  lon
+
+lonlat %>%
+  select(gridlat) %>%
+  distinct    ->
+  lat
+
+# for a given latitude, the grid cell it lives in
+# is the one it has minimum distance from the 
+# reported id,
+# BECAUSE this ESM has centered values for each
+# grid cell.
+findlatid <- function(latval){
+  lat %>%
+    mutate(latdistance = abs(gridlat-latval)) %>%
+    filter(latdistance == min(latdistance)) %>%
+    distinct %>%
+    mutate(lat = latval) %>% 
+    select(gridlat, lat) -> 
+    x
+  
+   if(nrow(x) > 1){
+    x %>%
+      filter(gridlat == min(gridlat)) ->
+      x
+   }
+  return(x)
+}
+
+findlonid <- function(lonval){
+  lon %>%
+    mutate(londistance = abs(gridlon-lonval)) %>%
+    filter(londistance == min(londistance)) %>%
+    distinct %>%
+    mutate(lon=lonval) %>% 
+    select(gridlon, lon) ->
+    x
+  
+  if(nrow(x) > 1){
+    x %>%
+      filter(gridlon == min(gridlon)) ->
+      x
+  }
+  return(x)
+}
+
+# Identify the latid and lon id for each coral site
+latids <- do.call(rbind, lapply(as.list(unique(coralsites$lat)), findlatid))
+lonids <- do.call(rbind, lapply(as.list(unique(coralsites$long_360)), findlonid))
+
+coralsites %>% 
+  left_join(latids, by = 'lat') %>%
+  left_join(lonids, by = c('long_360' = 'lon')) %>%
+  #mutate(gridlon = if_else(gridlon >= 180, gridlon - 360, gridlon)) %>% 
+  left_join(lonlat, by = c('gridlat', 'gridlon')) %>%
+  arrange(colnumber)  ->
+  coralIDS
+  
+
+tmp <- as_tibble(annual_ocean_data$vardata[, coralIDS$colnumber])
+  
+colnames(tmp) <- coralIDS$cell_id
+  
+tmp %>%
+  bind_cols(tibble(tgav = tgav)) %>%
+  gather(cell_id, anntos, -tgav) ->
+  coral_tos_ann
+
+
+p1 <- ggplot(filter(coral_tos_ann, cell_id %in% hawaii),
+             aes(x = anntos, y = tgav)) +
+  facet_wrap(~cell_id, nrow =3) + geom_point(shape = 1, size = 0.5) +
+  scale_color_brewer(palette = 'Set3') + 
+  ylab('Tgav(t)') + xlab('deltaSST(t)') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
+
+p2 <- ggplot(filter(coral_tos_ann, cell_id %in% florida),
+             aes(x = anntos, y = tgav)) +
+  facet_wrap(~cell_id, nrow =3) + geom_point(shape = 1, size = 0.5) +
+  scale_color_brewer(palette = 'Set3')+ 
+  ylab('Tgav(t)') + xlab('deltaSST(t)') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
+
+p3 <- ggplot(filter(coral_tos_ann, cell_id %in% pr),
+             aes(x = anntos, y = tgav)) +
+  facet_wrap(~cell_id, nrow =2) + geom_point(shape = 1, size = 0.5) +
+  scale_color_brewer(palette = 'Set3') + 
+  ylab('Tgav(t)') + xlab('deltaSST(t)') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
+
+
+ggsave(paste0('figures/', esmname, '_HI_annualtos_tgav.png'), p1, width = 14, height = 12, units = 'in')
+
+ggsave(paste0('figures/', esmname, '_FL_annualtos_tgav.png'), p2, width = 14, height = 12, units = 'in')
+
+ggsave(paste0('figures/', esmname, '_PR_annualtos_tgav.png'), p3, width = 14, height = 8, units = 'in')
+
+
+
+gridExtra::grid.arrange(p1, p2, p3, nrow = 1)
+```
+
+
+## Do the scaling
+
+Relates `tgav` in degC to `deltaTOS` in change from gridcell TOS_hist_ref_year degC 
+
+
+```{r pscl}
+
+# use the fldgen pattern scaling convenience function and carefully
+# pair the correct month specific gridded `tos` data with the
+# correct month specifc `tgav` data to result in a list of 
+# patterns, one for each month.
+annual_pattern <- pscl_analyze(annual_ocean_data$vardata, tgav)
+```
+
+
+## save the pattern
+
+```{r}
+
+# the pattern is only for the ocean grid cells
+# to make the .OUT files for combo, the full 
+# grid is necessary. 
+# It's also convenient  to have the grid 
+# lon and lat values over the ocean and their
+# corresponding colnumber in the `tos` data 
+# that has no NAs.
+# So output these in a list with the pattern. 
+
+
+saveRDS(list(annual_pattern = annual_pattern,
+             lonlat = lonlat, 
+             fulllon = annual_ocean_data$lon,
+             fulllat = annual_ocean_data$lat), 
+        paste0('patterns/', esmname, '_annualtos.rds'))
+```
+
+
+
+
+# Analysis {.tabset}
+
+
+## Check residuals
+
+### Zero mean
+
+Residuals in each grid cell for each month should be centered around 0 over time if pattern scaling was successful. We will calculate this mean over time in each grid cell for each month and print the summary of all the grid cell time means for each month to make sure they are all centered at 0. Note that this measure _does_ allow for cancellation of errors - we are just checking where the mean of the distribution of residuals actually lies, not measuring errors:
+
+```{r mean_tos_resids}
+
+mt <- apply(annual_pattern$r, 2, mean)
+print(as.vector(summary(mt)))
+
+```
+
+
+## RMS 
+
+Note that because of how the cmip models classify cells as land or ocean, we won't be able to say anything about sites fl1, fl9, fl4 because they're land cells and have no SST.
+
+RMS is a measure that accumulates errors - in a particular grid cell, for a given month, how many degrees off is the linear model SST value from the true value in each year on average. 
+
+```{r rms, echo = F}
+
+# RMS of annual pattern, available in every grid cell
+rms_by_grid <- apply(annual_pattern$r, 2, function(x){
+  sqrt(mean(x*x))
+  })
+
+tibble(rms = rms_by_grid,
+       lat = annual_ocean_data$coord[,1],
+       lon = annual_ocean_data$coord[,2]) %>%
+  mutate(lon = if_else(lon >= 180, lon-360, lon)) ->
+  rms
+
+p1_globalrms <- ggplot(rms, aes(x = lon, y = lat, fill = rms)) + geom_tile() +
+  ggtitle('Local annual TOS to Tgav pattern scaling RMS in degC by grid cell') +
+    annotate("text", x = coralsites[1,]$long, y = coralsites[1,]$lat, label = coralsites[1,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[2,]$long, y = coralsites[2,]$lat, label = coralsites[2,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[3,]$long, y = coralsites[3,]$lat, label = coralsites[3,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[4,]$long, y = coralsites[4,]$lat, label = coralsites[4,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[5,]$long, y = coralsites[5,]$lat, label = coralsites[5,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[6,]$long, y = coralsites[6,]$lat, label = coralsites[6,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[7,]$long, y = coralsites[7,]$lat, label = coralsites[7,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[8,]$long, y = coralsites[8,]$lat, label = coralsites[8,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[9,]$long, y = coralsites[9,]$lat, label = coralsites[9,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[10,]$long, y = coralsites[10,]$lat, label = coralsites[10,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[11,]$long, y = coralsites[11,]$lat, label = coralsites[11,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[12,]$long, y = coralsites[12,]$lat, label = coralsites[12,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[13,]$long, y = coralsites[13,]$lat, label = coralsites[13,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[14,]$long, y = coralsites[14,]$lat, label = coralsites[14,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[15,]$long, y = coralsites[15,]$lat, label = coralsites[15,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[16,]$long, y = coralsites[16,]$lat, label = coralsites[16,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[17,]$long, y = coralsites[17,]$lat, label = coralsites[17,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[18,]$long, y = coralsites[18,]$lat, label = coralsites[18,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[19,]$long, y = coralsites[19,]$lat, label = coralsites[19,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[20,]$long, y = coralsites[20,]$lat, label = coralsites[20,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[21,]$long, y = coralsites[21,]$lat, label = coralsites[21,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[22,]$long, y = coralsites[22,]$lat, label = coralsites[22,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[23,]$long, y = coralsites[23,]$lat, label = coralsites[23,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[24,]$long, y = coralsites[24,]$lat, label = coralsites[24,]$cell_id,
+             color = 'orange') +
+        annotate("text", x = coralsites[25,]$long, y = coralsites[25,]$lat, label = coralsites[25,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[26,]$long, y = coralsites[26,]$lat, label = coralsites[26,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[27,]$long, y = coralsites[27,]$lat, label = coralsites[27,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[28,]$long, y = coralsites[28,]$lat, label = coralsites[28,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[29,]$long, y = coralsites[29,]$lat, label = coralsites[29,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[30,]$long, y = coralsites[30,]$lat, label = coralsites[30,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[31,]$long, y = coralsites[31,]$lat, label = coralsites[31,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[32,]$long, y = coralsites[32,]$lat, label = coralsites[32,]$cell_id,
+             color = 'orange') +
+  theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
+
+ggsave(paste0('figures/', esmname, '_rms_AnnTosPscl.png'), p1_globalrms, width = 14, height = 11, units = 'in')
+gridExtra::grid.arrange(p1)
+
+
+# global avg rms
+# need weights for _this_ grid instead of the full tas grid
+# not considering land grid cells when calculating weights
+areafrac <- cos(rms$lat * pi / 180.0)
+areafrac <- areafrac/sum(areafrac)
+
+
+# calculate the global average value of tas for each month
+global_rms <- rms$rms %*% areafrac
+
+
+print(paste0('Global area weighted average rmse = ', global_rms, ' degC'))
+```
+
+We examine pattern scaling rms in more detail at each site of interest
+
+```{r }
+
+# Get the annual TOS in each grid cell as predicted 
+# by the annual pattern for the tgav
+reconstr_annual_tos <- pscl_apply(annual_pattern, tgav)
+
+
+# pull out just the coral sites for the reconstructed pattern
+tmp <- as_tibble(reconstr_annual_tos[, coralIDS$colnumber])
+colnames(tmp) <- coralIDS$cell_id
+
+tmp %>%
+  bind_cols(tibble(tgav = tgav)) %>%
+  gather(cell_id, reconst_anntos, -tgav)  %>%
+  left_join(coral_tos_ann, by = c('tgav', 'cell_id')) %>%
+  mutate(resids = anntos - reconst_anntos) %>%  
+  group_by(cell_id) %>%
+  summarise(rms = sqrt(mean((resids*resids)))) %>%
+  ungroup %>%
+  left_join(coralsites, by = 'cell_id')->
+  coral_tos_ann_reconstr
+rm(tmp)
+
+ p2_hirms <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% hawaii), aes(x = long, y = lat, fill = rms)) +
+    geom_tile()  + scale_fill_gradient(low = 'gray60', high = 'gray30') + 
+    annotate("text", x = coralsites[1,]$long, y = coralsites[1,]$lat, label = coralsites[1,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[2,]$long, y = coralsites[2,]$lat, label = coralsites[2,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[3,]$long, y = coralsites[3,]$lat, label = coralsites[3,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[4,]$long, y = coralsites[4,]$lat, label = coralsites[4,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[5,]$long, y = coralsites[5,]$lat, label = coralsites[5,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[6,]$long, y = coralsites[6,]$lat, label = coralsites[6,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[7,]$long, y = coralsites[7,]$lat, label = coralsites[7,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[8,]$long, y = coralsites[8,]$lat + 0.25, label = coralsites[8,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[9,]$long, y = coralsites[9,]$lat - 0.25, label = coralsites[9,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[10,]$long, y = coralsites[10,]$lat, label = coralsites[10,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[11,]$long, y = coralsites[11,]$lat, label = coralsites[11,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[12,]$long, y = coralsites[12,]$lat, label = coralsites[12,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[13,]$long, y = coralsites[13,]$lat, label = coralsites[13,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[14,]$long, y = coralsites[14,]$lat, label = coralsites[14,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[15,]$long, y = coralsites[15,]$lat, label = coralsites[15,]$cell_id,
+             color = 'orange') +
+    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    ylab('Latitude') + xlab('Longitude') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
+
+
+  p3_flrms <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% florida),
+                       aes(x = long, y = lat, fill = rms)) +
+    geom_tile() + scale_fill_gradient(low = 'gray60', high = 'gray30') + 
+    annotate("text", x = coralsites[16,]$long, y = coralsites[16,]$lat, label = coralsites[16,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[17,]$long, y = coralsites[17,]$lat, label = coralsites[17,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[18,]$long, y = coralsites[18,]$lat, label = coralsites[18,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[19,]$long, y = coralsites[19,]$lat, label = coralsites[19,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[20,]$long, y = coralsites[20,]$lat, label = coralsites[20,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[21,]$long, y = coralsites[21,]$lat, label = coralsites[21,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[22,]$long, y = coralsites[22,]$lat, label = coralsites[22,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[23,]$long, y = coralsites[23,]$lat, label = coralsites[23,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[24,]$long, y = coralsites[24,]$lat, label = coralsites[24,]$cell_id,
+             color = 'orange') +
+    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    ylab('Latitude') + xlab('Longitude') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
+
+
+ p4_prrms <-  ggplot(filter(coral_tos_ann_reconstr, cell_id %in% pr),
+                       aes(x = long, y = lat, fill = rms)) +
+    geom_tile() + scale_fill_gradient(low = 'gray60', high = 'gray30') + 
+    annotate("text", x = coralsites[25,]$long, y = coralsites[25,]$lat, label = coralsites[25,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[26,]$long, y = coralsites[26,]$lat, label = coralsites[26,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[27,]$long, y = coralsites[27,]$lat, label = coralsites[27,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[28,]$long, y = coralsites[28,]$lat, label = coralsites[28,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[29,]$long, y = coralsites[29,]$lat, label = coralsites[29,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[30,]$long, y = coralsites[30,]$lat, label = coralsites[30,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[31,]$long, y = coralsites[31,]$lat, label = coralsites[31,]$cell_id,
+             color = 'orange') +
+    annotate("text", x = coralsites[32,]$long, y = coralsites[32,]$lat, label = coralsites[32,]$cell_id,
+             color = 'orange') +
+    theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    ylab('Latitude') + xlab('Longitude') + 
+  ggtitle(paste0(substr(esmname, 8, nchar(esmname)-7))) + 
+  theme(axis.title = element_text(size = fontsize),
+        title = element_text(size = fontsize),
+        strip.text = element_text(size = (fontsize - 2)))
+
+
+ ggsave(paste0('figures/', esmname, '_rms_annpscl_HI.png'), p2_hirms,
+         width = 14, height = 11, units = 'in')
+
+ ggsave(paste0('figures/', esmname, '_rms_annpscl_FL.png'), p3_flrms,
+         width = 14, height = 11, units = 'in')
+  
+ ggsave(paste0('figures/', esmname, '_rms_annpscl_PR.png'), p4_prrms,
+         width = 14, height = 11, units = 'in')
+
+write.csv(coral_tos_ann_reconstr, paste0('rms/', esmname, '_coralsite_rms_annpscl.csv'), row.names = F)
+
+# save the rms and actual data scatter together:
+ggsave(paste0('figures/', esmname, '_rms_scatter_HI.png'), gridExtra::grid.arrange(p1, p2_hirms, nrow = 1),
+         width = 14, height = 8, units = 'in')
+
+ggsave(paste0('figures/', esmname, '_rms_scatter_FL.png'), gridExtra::grid.arrange(p2, p3_flrms, nrow = 1),
+         width = 14, height = 8, units = 'in')
+
+ggsave(paste0('figures/', esmname, '_rms_scatter_PR.png'), gridExtra::grid.arrange(p3, p4_prrms, nrow = 1),
+         width = 14, height = 8, units = 'in')
+```
