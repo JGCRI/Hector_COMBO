@@ -27,12 +27,14 @@ In the process of learning the patterns relating $\Delta TOS_{local}(t) = a Tgav
 
 
 ```{r load}
+
+# List of all tgav file names
 tgavfiles <- list.files('tgavs', full.names = TRUE)
 tgavfiles <- tgavfiles[!(grepl('monthly', tgavfiles))]
 
 
-
-
+# Read in and shape each tgav file, results in a list
+# each entry correspondig to one ESM
 modeltgavs <- lapply(tgavfiles, function(filename){
   
   if(grepl('CAMS', filename)){
@@ -54,9 +56,11 @@ modeltgavs <- lapply(tgavfiles, function(filename){
   
 })
 
-
+# Combine all of the lists together into a single table
 tgav_data <- do.call(rbind, modeltgavs)
 
+
+# Plot the time series and save
 p <- ggplot(tgav_data, aes(x = year, y = tgav, color = model)) +
   geom_line() +
   theme_bw()
@@ -64,8 +68,12 @@ p <- ggplot(tgav_data, aes(x = year, y = tgav, color = model)) +
 ggsave('figures/allmodels_tgav.png', p, width = 6, height = 6, units = 'in')
 
 
+# Save a csv of all of the tgav data together
+write.csv(tgav_data, 'tgavs/allmodels_tgavdata.csv', row.names = F)
 
-# Models from hottest to coldest
+
+# Arrange models from hottest to coldest based on temperature
+# in some year. Save the ordered list.
 tgav_data %>%
   filter(year == 2100) %>%
   mutate_if(., is.numeric, as.numeric) %>%
