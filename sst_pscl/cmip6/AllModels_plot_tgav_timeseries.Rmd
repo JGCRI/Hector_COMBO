@@ -55,13 +55,39 @@ modeltgavs <- lapply(tgavfiles, function(filename){
 })
 
 
-tgav <- do.call(rbind, modeltgavs)
+tgav_data <- do.call(rbind, modeltgavs)
 
-p <- ggplot(tgav, aes(x = year, y = tgav, color = model)) +
+p <- ggplot(tgav_data, aes(x = year, y = tgav, color = model)) +
   geom_line() +
   theme_bw()
 
 ggsave('figures/allmodels_tgav.png', p, width = 6, height = 6, units = 'in')
+
+
+
+# Models from hottest to coldest
+tgav_data %>%
+  filter(year == 2100) %>%
+  mutate_if(., is.numeric, as.numeric) %>%
+  arrange(desc(tgav)) %>%
+  write.csv(., 'models_ordered_hottest_to_coldest/orderedmodels_2100.csv', row.names = F)
+
+
+
+
+tgav_data %>%
+  filter(year == 2099) %>%
+  mutate_if(., is.numeric, as.numeric) %>%
+  arrange(desc(tgav)) %>%
+  write.csv(., 'models_ordered_hottest_to_coldest/orderedmodels_2099.csv', row.names = F)
+
+
+
+tgav_data %>%
+  filter(year == 2015) %>%
+  mutate_if(., is.numeric, as.numeric) %>%
+  arrange(desc(tgav)) %>%
+  write.csv(., 'models_ordered_hottest_to_coldest/orderedmodels_2015.csv', row.names = F)
 
 ```
 
