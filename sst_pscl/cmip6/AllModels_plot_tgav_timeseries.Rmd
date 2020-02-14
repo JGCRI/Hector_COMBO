@@ -1,0 +1,76 @@
+---
+title: "TGAV for all CMIP6 models"
+author: "ACS"
+date: "2/14/2020"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(ggplot2)
+library(RColorBrewer)
+
+
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Set up
+
+In the process of learning the patterns relating $\Delta TOS_{local}(t) = a Tgav(t) + b$ for each ESM, the time series of Tgav for each ESM is calculated (from monthly gridded `tas` data) and saved. Here, we plot all for comparison.
+
+
+```{r load}
+tgavfiles <- list.files('tgavs', full.names = TRUE)
+tgavfiles <- tgavfiles[!(grepl('monthly', tgavfiles))]
+
+
+
+
+modeltgavs <- lapply(tgavfiles, function(filename){
+  
+  if(grepl('CAMS', filename)){
+    
+    modelyears <- 2015:2099
+    
+  } else {
+    
+    modelyears <- 2015:2100
+
+  }
+
+    tibble(tgav = readRDS(filename),
+         year = modelyears) %>%
+      mutate(model = substr(filename, 19, nchar(filename) - 11)) ->
+      x
+    
+  return(x)
+  
+})
+
+
+tgav <- do.call(rbind, modeltgavs)
+
+p <- ggplot(tgav, aes(x = year, y = tgav, color = model)) +
+  geom_line() +
+  theme_bw()
+
+ggsave('figures/allmodels_tgav.png', p, width = 6, height = 6, units = 'in')
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
